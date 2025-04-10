@@ -85,10 +85,7 @@
                 android:hint="Enter email"
                 android:inputType="textEmailAddress"
                 android:paddingHorizontal="16dp"
-<<<<<<< HEAD
-                android:textColor="#001B3A"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
+                android:textColor="#80001B3A"
                 android:textColorHint="#80001B3A" />
 
             <!-- Password Input -->
@@ -110,10 +107,7 @@
                 android:hint="Enter password"
                 android:inputType="textPassword"
                 android:paddingHorizontal="16dp"
-<<<<<<< HEAD
-                android:textColor="#001B3A"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
+                android:textColor="#80001B3A"
                 android:textColorHint="#80001B3A" />
 
             <!-- Login Button -->

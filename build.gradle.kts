@@ -2,10 +2,7 @@
 plugins {
     id("com.android.application") version "8.9.0" apply false
     id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-<<<<<<< HEAD
     alias(libs.plugins.google.gms.google.services) apply false
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
 }
 
 tasks.withType<Wrapper> {

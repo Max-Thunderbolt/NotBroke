@@ -9,10 +9,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
-<<<<<<< HEAD
         android:name=".NotBrokeApplication"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -49,12 +46,9 @@
         <activity
             android:name=".RegisterActivity"
             android:exported="false" />
-<<<<<<< HEAD
         <activity
             android:name=".ProfileActivity"
             android:exported="false" />
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
     </application>
 
 </manifest>

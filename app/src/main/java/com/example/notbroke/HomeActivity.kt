@@ -1,9 +1,6 @@
 package com.example.notbroke
 
-<<<<<<< HEAD
 import android.content.Intent
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -88,12 +85,8 @@ class HomeActivity : AppCompatActivity() {
             
             profileMenuItem.setOnClickListener {
                 showToast("Profile selected")
-<<<<<<< HEAD
                 // Navigate to ProfileActivity
                 startActivity(Intent(this, ProfileActivity::class.java))
-=======
-                // TODO: Load profile fragment when created
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
             
@@ -125,6 +118,7 @@ class HomeActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up drawer menu", e)
             e.printStackTrace()
+            showToast("Error setting up menu: ${e.message}")
         }
     }
     
@@ -134,12 +128,14 @@ class HomeActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, fragment)
                 .commit()
+            Log.d(TAG, "Fragment loaded successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading fragment", e)
-            showToast("Error: ${e.message}")
+            e.printStackTrace()
+            showToast("Error loading content: ${e.message}")
         }
     }
-
+    
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }

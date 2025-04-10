@@ -94,10 +94,7 @@
                 android:hint="Enter email"
                 android:inputType="textEmailAddress"
                 android:paddingHorizontal="16dp"
-<<<<<<< HEAD
                 android:textColor="#001B3A"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
                 android:textColorHint="#80001B3A" />
 
             <!-- Username Input -->
@@ -119,10 +116,6 @@
                 android:hint="Enter username"
                 android:inputType="text"
                 android:paddingHorizontal="16dp"
-<<<<<<< HEAD
-                android:textColor="#001B3A"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
                 android:textColorHint="#80001B3A" />
 
             <!-- Password Input -->
@@ -144,10 +137,7 @@
                 android:hint="Enter password"
                 android:inputType="textPassword"
                 android:paddingHorizontal="16dp"
-<<<<<<< HEAD
                 android:textColor="#001B3A"
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
                 android:textColorHint="#80001B3A" />
 
             <!-- Sign Up Button -->
@@ -164,7 +154,32 @@
     </androidx.cardview.widget.CardView>
 
     <!-- Already have account text -->
+    <TextView
+        android:id="@+id/alreadyHaveAccountText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="Already have an account?"
+        android:textColor="#E91E63"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@id/loginLinkButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <!-- Login Link Button -->
+    <TextView
+        android:id="@+id/loginLinkButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="Login"
+        android:textColor="#001B3A"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

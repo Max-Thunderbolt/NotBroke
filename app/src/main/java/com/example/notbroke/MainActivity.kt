@@ -6,7 +6,6 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
-<<<<<<< HEAD
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -14,20 +13,13 @@ import com.google.firebase.ktx.Firebase
 class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
 
-=======
-
-class MainActivity : AppCompatActivity() {
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-<<<<<<< HEAD
         // Initialize Firebase Auth
         auth = Firebase.auth
 
-=======
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
         // Initialize views
         val signUpButton = findViewById<MaterialButton>(R.id.registerLinkButton)
         val emailInput = findViewById<EditText>(R.id.emailInput)
@@ -40,7 +32,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         loginButton.setOnClickListener {
-<<<<<<< HEAD
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
 
@@ -78,21 +69,6 @@ class MainActivity : AppCompatActivity() {
             // User is already signed in, go to home screen
             startActivity(Intent(this, HomeActivity::class.java))
             finish()
-=======
-            val email = emailInput.text.toString()
-            val password = passwordInput.text.toString()
-
-            // TODO: Add login validation
-            if (email.isNotEmpty() && password.isNotEmpty()) {
-                startActivity(Intent(this, HomeActivity::class.java))
-                finish()
-            } else {
-                //Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
-                // Temporarily navigate to home
-                startActivity(Intent(this, HomeActivity::class.java))
-                finish()
-            }
->>>>>>> dfb36664f5bd8ecf892bd63e6b9a33f2eefe4dac
         }
     }
 }
