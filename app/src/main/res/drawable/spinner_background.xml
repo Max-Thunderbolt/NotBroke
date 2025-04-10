@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#252525" />
+            <corners android:radius="8dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#444444" />
+        </shape>
+    </item>
+    
+    <!-- Dropdown arrow -->
+    <item
+        android:gravity="end|center_vertical"
+        android:right="12dp">
+        <rotate
+            android:fromDegrees="45"
+            android:toDegrees="45">
+            <shape android:shape="rectangle">
+                <solid android:color="@android:color/transparent" />
+                <size
+                    android:width="12dp"
+                    android:height="12dp" />
+                <stroke
+                    android:width="2dp"
+                    android:color="#AAAAAA" />
+            </shape>
+        </rotate>
+    </item>
+</layer-list> 

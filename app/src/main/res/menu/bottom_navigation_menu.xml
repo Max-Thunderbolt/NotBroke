@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/nav_transactions"
+        android:icon="@drawable/ic_dashboard"
+        android:title="Transactions" />
+    <item
+        android:id="@+id/nav_budget"
+        android:icon="@drawable/ic_budget"
+        android:title="Budget" />
+    <item
+        android:id="@+id/nav_progression"
+        android:icon="@drawable/ic_progress"
+        android:title="Progress" />
+    <item
+        android:id="@+id/nav_debt"
+        android:icon="@drawable/ic_debt"
+        android:title="Debt" />
+    <item
+        android:id="@+id/nav_habits"
+        android:icon="@drawable/ic_habits"
+        android:title="Habits" />
+</menu>

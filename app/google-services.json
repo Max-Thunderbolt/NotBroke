@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "253659646538",
+    "project_id": "notbroke-15da6",
+    "storage_bucket": "notbroke-15da6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253659646538:android:701f6c85d829c9b2dbb4b3",
+        "android_client_info": {
+          "package_name": "com.example.notbroke"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQ7hD02kLq8ZfUmhsAP40lOonXF0nT-ls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

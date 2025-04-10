@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#E91E63</item>
+        <item name="colorPrimaryDark">#121017</item>
+        <item name="colorAccent">#FFD700</item>
+        <item name="android:windowBackground">#121017</item>
+        <!-- Primary brand color. -->
+        <item name="colorPrimaryVariant">#C2185B</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">#F2DD3E</item>
+        <item name="colorSecondaryVariant">#FFD700</item>
+        <item name="colorOnSecondary">#000000</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">#1E1E1E</item>
+        <!-- Global text color -->
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:textColorSecondary">#FFFFFF</item>
+        <!-- Text Input Style -->
+        <item name="textInputStyle">@style/AppTheme.TextInputLayout</item>
+        <!-- Button Style -->
+        <item name="materialButtonStyle">@style/AppTheme.Button</item>
+    </style>
+
+    <!-- ================ IMAGE STYLES ================ -->
+    <!-- Style for rounded ImageView -->
+    <style name="roundedImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- ================ TEXT INPUT STYLES ================ -->
+    <!-- Base style for TextInputLayout -->
+    <style name="AppTheme.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginHorizontal">32dp</item>
+        <item name="android:textColorHint">#FFFFFF</item>
+        <item name="boxBackgroundColor">#33FFFFFF</item>
+        <item name="boxBackgroundMode">outline</item>
+        <item name="boxStrokeColor">#FFFFFF</item>
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="hintTextColor">#FFFFFF</item>
+    </style>
+
+    <!-- Style for password TextInputLayout that extends the base style -->
+    <style name="AppTheme.TextInputLayout.Password" parent="AppTheme.TextInputLayout">
+        <item name="endIconMode">password_toggle</item>
+        <item name="endIconTint">#E91E63</item>
+    </style>
+
+    <!-- Style for TextInputEditText -->
+    <style name="AppTheme.TextInputEditText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textCursorDrawable">@null</item>
+    </style>
+
+    <!-- ================ BUTTON STYLES ================ -->
+    <!-- Style for primary buttons -->
+    <style name="AppTheme.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:layout_marginHorizontal">32dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="backgroundTint">#E91E63</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="strokeColor">#EF5788</item>
+        <item name="strokeWidth">2dp</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <!-- Style for register button -->
+    <style name="AppTheme.Button.Register" parent="AppTheme.Button">
+        <item name="android:text">Register</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="backgroundTint">#E91E63</item>
+    </style>
+
+    <!-- ================ TEXT STYLES ================ -->
+    <!-- Style for title text -->
+    <style name="AppTheme.TitleText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/alata</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <!-- Style for paragraph text -->
+    <style name="AppTheme.ParagraphText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/alata</item>
+        <item name="android:textColor">#EAEAEA</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- ================ NAVIGATION STYLES ================ -->
+    <!-- Style for bottom navigation text -->
+    <style name="BottomNavigationTextStyle">
+        <item name="android:textSize">10sp</item>
+        <item name="android:fontFamily">@font/alata</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+    
+    <!-- Custom style for bottom navigation view -->
+    <style name="Widget.App.BottomNavigationView" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="itemTextAppearanceActive">@style/TextAppearance.App.BottomNavigationView</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.App.BottomNavigationView</item>
+        <item name="itemPaddingTop">4dp</item>
+        <item name="itemPaddingBottom">4dp</item>
+        <item name="itemHorizontalTranslationEnabled">false</item>
+        <item name="itemIconSize">18dp</item>
+        <item name="itemIconTint">@android:color/white</item>
+        <item name="itemTextColor">@android:color/white</item>
+        <item name="itemRippleColor">#33FFFFFF</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.BottomNavigationView</item>
+    </style>
+    
+    <style name="TextAppearance.App.BottomNavigationView" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">10sp</item>
+        <item name="android:fontFamily">@font/alata</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="ThemeOverlay.App.BottomNavigationView" parent="">
+        <item name="colorPrimary">#FFFFFF</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+    </style>
+
+    <style name="AppTheme.BottomNavigation" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="android:background">#1E1E1E</item>
+        <item name="itemIconTint">@color/bottom_nav_colors</item>
+        <item name="itemTextColor">@color/bottom_nav_colors</item>
+    </style>
+    
+    <!-- Custom style for dropdown menus -->
+    <style name="AppTheme.DropdownStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxBackgroundColor">#1E1E1E</item>
+        <item name="boxStrokeColor">@color/gold</item>
+        <item name="hintTextColor">#FFFFFF</item>
+        <item name="android:textColorHint">#FFFFFF</item>
+        <item name="android:popupBackground">#1E1E1E</item>
+    </style>
+    
+    <!-- Custom style for AutoCompleteTextView -->
+    <style name="AppTheme.DropdownTextStyle">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColorHint">#CCCCCC</item>
+    </style>
+</resources> 
