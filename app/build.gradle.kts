@@ -88,6 +88,18 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+
+    // Coroutines for asynchronous operations (like Firestore calls)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3") // Or latest stable
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0") // For lifecycleScope
+
+    // MPAndroidChart (ensure this matches the version you are using)
+    implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Activity Result API (usually included with fragment-ktx or appcompat)
+    implementation("androidx.activity:activity-ktx:1.9.0") // Or latest
+    implementation("androidx.fragment:fragment-ktx:1.7.1") // Or latest
 }
 
 // Configure tasks to handle incremental builds properly
