@@ -15,12 +15,14 @@ import com.example.notbroke.fragments.DashboardFragment
 import com.example.notbroke.fragments.ProgressionFragment
 import com.example.notbroke.fragments.HabitsFragment
 import com.example.notbroke.fragments.DebtFragment
+import com.google.android.material.button.MaterialButton
 
 class HomeActivity : AppCompatActivity() {
     private val TAG = "HomeActivity"
     
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var menuButton: ImageButton
+    private lateinit var profileButton: MaterialButton
     private lateinit var dashboardMenuItem: LinearLayout
     private lateinit var profileMenuItem: LinearLayout
     private lateinit var settingsMenuItem: LinearLayout
@@ -38,6 +40,7 @@ class HomeActivity : AppCompatActivity() {
             // Initialize drawer components
             drawerLayout = findViewById(R.id.drawerLayout)
             menuButton = findViewById(R.id.menuButton)
+            profileButton = findViewById(R.id.profileButton)
             
             // Initialize drawer menu items
             dashboardMenuItem = findViewById(R.id.nav_dashboard_item)
@@ -50,6 +53,9 @@ class HomeActivity : AppCompatActivity() {
             // Setup drawer menu
             setupDrawerMenu()
             
+            // Setup profile button
+            setupProfileButton()
+            
             // Default fragment is Dashboard
             if (savedInstanceState == null) {
                 loadFragment(DashboardFragment.newInstance())
@@ -60,6 +66,12 @@ class HomeActivity : AppCompatActivity() {
             Log.e(TAG, "Critical error in onCreate", e)
             e.printStackTrace()
             showToast("Critical error: ${e.message}")
+        }
+    }
+
+    private fun setupProfileButton() {
+        profileButton.setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
         }
     }
 
