@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "253659646538",
+    "firebase_url": "https://notbroke-15da6-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "notbroke-15da6",
     "storage_bucket": "notbroke-15da6.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.notbroke"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "253659646538-h0rc6u6qqrsjjku0lpqhi41snnr9vb1l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.notbroke",
+            "certificate_hash": "41abda6943b34d1651e58a4b0edcadd23498ee8c"
+          }
+        },
+        {
+          "client_id": "253659646538-fldqee1ap0svm2qrsojd4j1uhb8b4k99.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAQ7hD02kLq8ZfUmhsAP40lOonXF0nT-ls"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "253659646538-fldqee1ap0svm2qrsojd4j1uhb8b4k99.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

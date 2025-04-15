@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.android") version "1.9.22"
     alias(libs.plugins.google.gms.google.services)
 }
 
@@ -68,13 +68,23 @@ dependencies {
     
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
+
     
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth-ktx")
     
     // Firebase Firestore
     implementation("com.google.firebase:firebase-firestore-ktx")
-    
+
+    // Google Sign In
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+
+    // Credential Manager
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation(libs.firebase.crashlytics.buildtools)
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
