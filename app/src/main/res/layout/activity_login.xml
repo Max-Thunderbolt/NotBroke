@@ -130,11 +130,11 @@
                 android:backgroundTint="#FFFFFF"
                 android:text="Sign in with Google"
                 android:textColor="#001B3A"
-                app:cornerRadius="12dp"
-                
+                app:icon="@drawable/ic_google"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
-                app:iconTint="@null" />
+                app:iconTint="@null"
+                app:cornerRadius="12dp" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
