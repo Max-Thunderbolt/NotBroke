@@ -16,4 +16,5 @@
     <style name="Base.Theme.BudgetApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
     </style>
+
 </resources> 

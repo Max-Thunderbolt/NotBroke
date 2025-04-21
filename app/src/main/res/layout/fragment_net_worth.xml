@@ -1,0 +1,57 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#000000"
+    tools:context=".fragments.NetWorthFragment">
+
+    <TextView
+        android:id="@+id/totalNetWorthText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total Net Worth: R0.00"
+        android:textColor="#FF007F"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/addAmountEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter amount"
+        android:inputType="numberDecimal"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="#FF007F"
+        android:textColor="#FFFFFF" />
+
+    <Button
+        android:id="@+id/addDateButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SELECT DATE"
+        android:layout_marginTop="8dp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/pink_border_button" />
+
+    <Button
+        android:id="@+id/addButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ADD ENTRY"
+        android:layout_marginTop="12dp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/pink_border_button" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/netWorthRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        tools:listitem="@layout/item_net_worth" />
+</LinearLayout>

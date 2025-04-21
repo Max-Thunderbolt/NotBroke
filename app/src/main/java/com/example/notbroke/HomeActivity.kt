@@ -15,11 +15,12 @@ import com.example.notbroke.fragments.DashboardFragment
 import com.example.notbroke.fragments.ProgressionFragment
 import com.example.notbroke.fragments.HabitsFragment
 import com.example.notbroke.fragments.DebtFragment
+import com.example.notbroke.fragments.NetWorthFragment
 import com.google.android.material.button.MaterialButton
 
 class HomeActivity : AppCompatActivity() {
     private val TAG = "HomeActivity"
-    
+
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var menuButton: ImageButton
     private lateinit var profileButton: MaterialButton
@@ -29,19 +30,20 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var progressionMenuItem: LinearLayout
     private lateinit var habitsMenuItem: LinearLayout
     private lateinit var debtsMenuItem: LinearLayout
+    private lateinit var netWorthMenuItem: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         try {
             Log.d(TAG, "Starting onCreate")
-            
+
             super.onCreate(savedInstanceState)
             setContentView(R.layout.activity_home)
-            
+
             // Initialize drawer components
             drawerLayout = findViewById(R.id.drawerLayout)
             menuButton = findViewById(R.id.menuButton)
             profileButton = findViewById(R.id.profileButton)
-            
+
             // Initialize drawer menu items
             dashboardMenuItem = findViewById(R.id.nav_dashboard_item)
             profileMenuItem = findViewById(R.id.nav_profile_item)
@@ -49,18 +51,19 @@ class HomeActivity : AppCompatActivity() {
             progressionMenuItem = findViewById(R.id.nav_progression_item)
             habitsMenuItem = findViewById(R.id.nav_habits_item)
             debtsMenuItem = findViewById(R.id.nav_debts_item)
-            
+            netWorthMenuItem = findViewById(R.id.nav_net_worth_item)
+
             // Setup drawer menu
             setupDrawerMenu()
-            
+
             // Setup profile button
             setupProfileButton()
-            
+
             // Default fragment is Dashboard
             if (savedInstanceState == null) {
                 loadFragment(DashboardFragment.newInstance())
             }
-            
+
             Log.d(TAG, "onCreate completed")
         } catch (e: Exception) {
             Log.e(TAG, "Critical error in onCreate", e)
@@ -78,8 +81,7 @@ class HomeActivity : AppCompatActivity() {
     private fun setupDrawerMenu() {
         try {
             Log.d(TAG, "Setting up drawer menu")
-            
-            // Set up the menu button click listener
+
             menuButton.setOnClickListener {
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                     drawerLayout.closeDrawer(GravityCompat.START)
@@ -87,45 +89,48 @@ class HomeActivity : AppCompatActivity() {
                     drawerLayout.openDrawer(GravityCompat.START)
                 }
             }
-            
-            // Set up click listeners for drawer menu items
+
             dashboardMenuItem.setOnClickListener {
                 showToast("Dashboard selected")
                 loadFragment(DashboardFragment.newInstance())
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
             profileMenuItem.setOnClickListener {
                 showToast("Profile selected")
-                // Navigate to ProfileActivity
                 startActivity(Intent(this, ProfileActivity::class.java))
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
             settingsMenuItem.setOnClickListener {
                 showToast("Settings selected")
-                // TODO: Load settings fragment when created
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
             progressionMenuItem.setOnClickListener {
                 showToast("Progression selected")
                 loadFragment(ProgressionFragment.newInstance())
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
             habitsMenuItem.setOnClickListener {
                 showToast("Habits selected")
                 loadFragment(HabitsFragment.newInstance())
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
             debtsMenuItem.setOnClickListener {
                 showToast("Debts selected")
                 loadFragment(DebtFragment.newInstance())
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
-            
+
+            netWorthMenuItem.setOnClickListener {
+                showToast("Net Worth selected")
+                loadFragment(NetWorthFragment.newInstance())
+                drawerLayout.closeDrawer(GravityCompat.START)
+            }
+
             Log.d(TAG, "Drawer menu setup completed")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up drawer menu", e)
@@ -133,7 +138,7 @@ class HomeActivity : AppCompatActivity() {
             showToast("Error setting up menu: ${e.message}")
         }
     }
-    
+
     private fun loadFragment(fragment: Fragment) {
         try {
             Log.d(TAG, "Loading fragment: ${fragment.javaClass.simpleName}")
@@ -147,12 +152,11 @@ class HomeActivity : AppCompatActivity() {
             showToast("Error loading content: ${e.message}")
         }
     }
-    
+
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
-    
-    // Handle back button press to close drawer if open
+
     override fun onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -160,4 +164,4 @@ class HomeActivity : AppCompatActivity() {
             super.onBackPressed()
         }
     }
-} 
+}
