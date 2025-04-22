@@ -1,17 +1,17 @@
 package com.example.notbroke.models
 
-import android.net.Uri
-
+// *** Ensure this is the only definition of Transaction data class in your project ***
 data class Transaction(
-    val id: Long,
-    val amount: Double,
+    val id: Long = 0L, // Local ID (can keep if needed, but Firestore ID is primary)
+    val firestoreId: String? = null, // *** ADDED: Firestore document ID ***
     val type: Type,
+    val amount: Double,
     val description: String,
     val category: String,
-    val date: Long,
-    val receiptImageUri: String? = null  // Optional receipt image URI stored as String
+    val date: Long, // Timestamp in milliseconds
+    val receiptImageUri: String? = null // URI as a String
 ) {
     enum class Type {
         INCOME, EXPENSE
     }
-} 
+}
