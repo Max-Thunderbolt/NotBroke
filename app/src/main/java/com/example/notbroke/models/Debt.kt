@@ -5,14 +5,28 @@ import java.util.UUID
 
 data class Debt(
     val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val totalAmount: Double,
+    val userId: String = "",
+    val name: String = "",
+    val totalAmount: Double = 0.0,
     var amountPaid: Double = 0.0,
-    val interestRate: Double,
-    val monthlyPayment: Double,
+    val interestRate: Double = 0.0,
+    val monthlyPayment: Double = 0.0,
     val creationDate: Long = System.currentTimeMillis(),
     var lastPaymentDate: Long? = null
 ) {
+    // No-argument constructor for Firestore
+    constructor() : this(
+        id = UUID.randomUUID().toString(),
+        userId = "",
+        name = "",
+        totalAmount = 0.0,
+        amountPaid = 0.0,
+        interestRate = 0.0,
+        monthlyPayment = 0.0,
+        creationDate = System.currentTimeMillis(),
+        lastPaymentDate = null
+    )
+
     /**
      * Calculates the remaining balance on the debt
      */
@@ -76,9 +90,10 @@ data class Debt(
     }
     
     companion object {
-        fun createSampleDebts(): List<Debt> {
+        fun createSampleDebts(userId: String): List<Debt> {
             return listOf(
                 Debt(
+                    userId = userId,
                     name = "Personal Loan",
                     totalAmount = 75000.0,
                     amountPaid = 15000.0,
@@ -86,6 +101,7 @@ data class Debt(
                     monthlyPayment = 2500.0
                 ),
                 Debt(
+                    userId = userId,
                     name = "Credit Card",
                     totalAmount = 25000.0,
                     amountPaid = 5000.0,
@@ -93,6 +109,7 @@ data class Debt(
                     monthlyPayment = 1500.0
                 ),
                 Debt(
+                    userId = userId,
                     name = "Car Loan",
                     totalAmount = 150000.0,
                     amountPaid = 65000.0,
@@ -100,6 +117,7 @@ data class Debt(
                     monthlyPayment = 3500.0
                 ),
                 Debt(
+                    userId = userId,
                     name = "Student Loan",
                     totalAmount = 120000.0,
                     amountPaid = 40000.0,
