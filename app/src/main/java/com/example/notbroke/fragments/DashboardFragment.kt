@@ -285,14 +285,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
         // Use context safely
         context?.let { ctx ->
-            val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, periods)
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            // Use the custom layout for the selected item
+            val adapter = ArrayAdapter(ctx, R.layout.spinner_selected_item, periods)
+            // Use the custom layout for the dropdown items
+            adapter.setDropDownViewResource(R.layout.spinner_dropdown_item)
             periodSpinner.adapter = adapter
 
             periodSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    // Style the selected item (optional, handle potential null view)
-                    (view as? TextView)?.setTextColor(Color.parseColor("#FFD700"))
+                    // Remove manual text color setting, handled by spinner_selected_item.xml
                     val selectedPeriod = periods[position]
                     Log.i(TAG, "Period selected via spinner: $selectedPeriod")
                     loadTransactionsForPeriod(selectedPeriod) // Trigger Firestore load
