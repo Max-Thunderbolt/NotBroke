@@ -26,6 +26,8 @@ import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.notbroke.services.AuthService
+import com.google.firebase.auth.FirebaseUser
 
 /**
  * MainActivity handles user authentication including:
@@ -43,6 +45,8 @@ class MainActivity : AppCompatActivity() {
     private val RC_SIGN_IN = 9001
     // Google Sign In Client
     private lateinit var googleSignInClient: GoogleSignInClient
+    // Auth Service
+    private val authService = AuthService.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,40 +90,41 @@ class MainActivity : AppCompatActivity() {
             // Disable login button to prevent multiple submissions
             loginButton.isEnabled = false
 
-            // Attempt to sign in with Firebase
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
+            // Use AuthService to sign in
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val result = authService.signInWithEmailAndPassword(email, password)
+                    result.onSuccess { user ->
                         // Login successful - navigate to home screen
-                        Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(this, HomeActivity::class.java))
+                        Toast.makeText(this@MainActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this@MainActivity, HomeActivity::class.java))
                         finish()
-                    } else {
+                    }.onFailure { exception ->
                         // Login failed - show error and re-enable button
-                        Toast.makeText(this, "Login failed: ${task.exception?.message}",
+                        Toast.makeText(this@MainActivity, "Login failed: ${exception.message}",
                             Toast.LENGTH_SHORT).show()
                         loginButton.isEnabled = true
                     }
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    loginButton.isEnabled = true
                 }
+            }
         }
 
-        // Set up Google Sign In button
+        // Handle Google Sign In
         googleSignInButton.setOnClickListener {
-            signInWithGoogle()
+            val signInIntent = googleSignInClient.signInIntent
+            startActivityForResult(signInIntent, RC_SIGN_IN)
+        }
+
+        // Check if user is already signed in
+        if (auth.currentUser != null) {
+            startActivity(Intent(this, HomeActivity::class.java))
+            finish()
         }
     }
 
-    /**
-     * Initiates the Google Sign In process using the Google Sign-In API.
-     */
-    private fun signInWithGoogle() {
-        val signInIntent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, RC_SIGN_IN)
-    }
-
-    /**
-     * Handles the result of the Google Sign-In process.
-     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -129,59 +134,30 @@ class MainActivity : AppCompatActivity() {
                 val account = task.getResult(ApiException::class.java)
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
-                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    /**
-     * Authenticates with Firebase using the Google ID token and handles user data.
-     * @param idToken The Google ID token to use for authentication
-     */
     private fun firebaseAuthWithGoogle(idToken: String) {
-        // Create a Firebase credential from the Google ID token
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        
-        // Sign in to Firebase with the credential
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    // Get the current user
-                    val user = auth.currentUser
-                    
-                    // Check if this is a new user
-                    if (task.result?.additionalUserInfo?.isNewUser == true) {
-                        // Create a new user document in Firestore for first-time users
-                        user?.let { firebaseUser ->
-                            val userData = hashMapOf(
-                                "email" to (firebaseUser.email ?: ""),
-                                "username" to (firebaseUser.displayName ?: firebaseUser.email?.split("@")?.get(0) ?: "User"),
-                                "createdAt" to System.currentTimeMillis()
-                            )
-                            
-                            // Save user data to Firestore
-                            db.collection("users").document(firebaseUser.uid)
-                                .set(userData)
-                                .addOnSuccessListener {
-                                    Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
-                                    startActivity(Intent(this, HomeActivity::class.java))
-                                    finish()
-                                }
-                                .addOnFailureListener { e ->
-                                    Toast.makeText(this, "Error saving user data: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                        }
-                    } else {
-                        // Existing user - just navigate to home screen
-                        Toast.makeText(this, "Sign in successful!", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(this, HomeActivity::class.java))
-                        finish()
-                    }
-                } else {
-                    // Authentication failed - show error message
-                    Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val result = authService.signInWithGoogleCredential(credential)
+                result.onSuccess { user: FirebaseUser ->
+                    // Sign in successful - navigate to home screen
+                    Toast.makeText(this@MainActivity, "Google sign in successful!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@MainActivity, HomeActivity::class.java))
+                    finish()
+                }.onFailure { exception: Throwable ->
+                    // Sign in failed - show error
+                    Toast.makeText(this@MainActivity, "Google sign in failed: ${exception.message}",
+                        Toast.LENGTH_SHORT).show()
                 }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
     }
 
     /**
