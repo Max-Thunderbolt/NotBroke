@@ -1,5 +1,6 @@
 package com.example.notbroke.fragments
 
+// ===== Keep existing imports =====
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -18,41 +19,63 @@ import android.graphics.Color
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.Entry // Import Entry
 import com.github.mikephil.charting.data.PieEntry
 import android.content.res.ColorStateList
 import com.example.notbroke.R
-import com.example.notbroke.TestData
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.textfield.TextInputEditText
-import android.widget.AutoCompleteTextView
-import android.widget.Button
+// REMOVE: import com.google.android.material.textfield.TextInputEditText // Not needed after removing manual category
+// REMOVE: import android.widget.AutoCompleteTextView // Not needed after removing manual category
+import android.widget.Button // Still needed for dialog buttons
 import android.app.Dialog
 import com.google.android.material.button.MaterialButton
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import java.io.File
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import android.widget.ImageView
+import android.Manifest // Keep for permissions
+import android.app.Activity // Keep for ActivityResult
+import android.content.Intent // Keep for Intents
+import android.content.pm.PackageManager // Keep for permissions
+import android.graphics.Bitmap // Keep for images
+import android.graphics.BitmapFactory // Keep for images
+import android.net.Uri // Keep for images
+import android.os.Environment // Keep for images
+import android.provider.MediaStore // Keep for images
+import androidx.activity.result.ActivityResultLauncher // Keep for ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts // Keep for ActivityResult
+import androidx.core.app.ActivityCompat // Keep for permissions
+import androidx.core.content.ContextCompat // Keep for permissions/colors
+import androidx.core.content.FileProvider // Keep for camera
+import java.io.File // Keep for camera
+import java.io.IOException // Keep for camera
+import java.text.SimpleDateFormat // Keep for camera filename
+import java.util.Date // Keep for camera filename
+import java.util.Locale // Keep for camera filename
+import android.widget.ImageView // Keep for image preview
+// REMOVE: import android.text.Editable // Not needed after removing manual category suggestion
+// REMOVE: import android.text.TextWatcher // Not needed after removing manual category suggestion
+import android.widget.AdapterView // Add for Spinner listener
+import android.widget.AutoCompleteTextView
+import android.widget.EditText // Import EditText directly
+
+// ===== Add necessary new imports =====
+import androidx.lifecycle.lifecycleScope // Add for Coroutines
+import com.example.notbroke.utils.CategorizationUtils // Add the new utils class
+import com.github.mikephil.charting.components.Legend
+import com.github.mikephil.charting.formatter.PercentFormatter // Add for chart formatting
+import com.github.mikephil.charting.highlight.Highlight // Add for chart interactivity
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener // Add for chart interactivity
+import com.google.firebase.auth.FirebaseAuth // Add for Firebase Auth
+import com.google.firebase.firestore.FirebaseFirestore // Add for Firestore
+import com.google.firebase.firestore.Query // Add for Firestore queries
+import com.google.firebase.firestore.QuerySnapshot // Add for Firestore results
+// REMOVE: import com.google.firebase.firestore.ktx.toObject // Not needed if mapping manually
+import kotlinx.coroutines.launch // Add for Coroutines
+import kotlinx.coroutines.tasks.await // Add for Coroutines + Tasks API
+import java.util.* // Add for Calendar
+
 
 class DashboardFragment : Fragment() {
-    private val TAG = "DashboardFragment"
-    
-    // Views
+    // Use companion object TAG for consistency
+    // private val TAG = "DashboardFragment" // Remove this line
+
+    // ===== Keep existing Views =====
     private lateinit var transactionsRecyclerView: RecyclerView
     private lateinit var transactionAdapter: TransactionAdapter
     private lateinit var pieChart: PieChart
@@ -61,26 +84,38 @@ class DashboardFragment : Fragment() {
     private lateinit var totalSpentTextView: TextView
     private lateinit var remainingTextView: TextView
     private lateinit var balanceTextView: TextView
-    //private lateinit var addIncomeButton: FloatingActionButton
-    //private lateinit var addExpenseButton: FloatingActionButton
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
 
-    // Receipt image handling
+    // ===== Keep existing Receipt image handling =====
     private var currentPhotoPath: String? = null
     private var selectedImageUri: Uri? = null
     private lateinit var takePictureLauncher: ActivityResultLauncher<Intent>
     private lateinit var pickImageLauncher: ActivityResultLauncher<Intent>
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    
-    // Reference to the current dialog
     private var currentDialog: Dialog? = null
+
+    // ===== Add Firebase instances =====
+    private lateinit var db: FirebaseFirestore
+    private lateinit var auth: FirebaseAuth
+
+    // Store the current date range for navigation
+    private var currentStartDate: Long = 0L
+    private var currentEndDate: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Initialize Activity Result Launchers
-        initializeActivityResultLaunchers()
+        initializeActivityResultLaunchers() // Keep this
+        // Initialize Firebase
+        try {
+            db = FirebaseFirestore.getInstance()
+            auth = FirebaseAuth.getInstance()
+            Log.d(TAG, "onCreate: Initialized Firebase Auth and Firestore")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing Firebase", e)
+            showToast("Failed to initialize core services. Please restart the app.")
+            // Consider preventing fragment load if Firebase fails
+        }
     }
 
     override fun onCreateView(
@@ -88,574 +123,940 @@ class DashboardFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(TAG, "onCreateView: Inflating dashboard fragment")
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_dashboard, container, false)
+        Log.d(TAG, "onCreateView: Inflating dashboard fragment layout")
+        // Use try-catch for layout inflation
+        return try {
+            inflater.inflate(R.layout.fragment_dashboard, container, false)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error inflating layout R.layout.fragment_dashboard", e)
+            // Optionally return a simple error view
+            null
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated: Setting up dashboard fragment views")
-        
+        Log.d(TAG, "onViewCreated: Setting up dashboard fragment views and logic")
+
         try {
-            // Initialize views
             initializeViews(view)
-            
-            // Setup FAB click listeners
-            setupFabListeners()
-            
-            // Setup RecyclerView for transactions
+            setupButtonListeners() // Renamed from setupFabListeners
             setupTransactionsRecyclerView()
-            
-            // Load sample transactions
-            loadSampleTransactions()
-            
-            // Setup budget components
+
+            // Setup budget components - Chart and Spinner setup remains
             setupPieChart()
-            setupPeriodSpinner()
-            loadBudgetData()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting up dashboard fragment", e)
-            showToast("Error: ${e.message}")
-        }
-    }
-    
-    private fun initializeViews(view: View) {
-        try {
-            // Try to find views in the fragment layout
-            pieChart = view.findViewById(R.id.pieChart)
-            periodSpinner = view.findViewById(R.id.periodSpinner)
-            totalBudgetTextView = view.findViewById(R.id.totalBudgetTextView)
-            totalSpentTextView = view.findViewById(R.id.totalSpentTextView)
-            remainingTextView = view.findViewById(R.id.remainingTextView)
-            balanceTextView = view.findViewById(R.id.balanceTextView)
-            transactionsRecyclerView = view.findViewById(R.id.transactionsRecyclerView)
-            //addIncomeButton = view.findViewById(R.id.addIncomeButton)
-            //addExpenseButton = view.findViewById(R.id.addExpenseButton)
-            balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
-            balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
-            
-            Log.d(TAG, "Views initialized successfully")
-        } catch (e: Exception) {
+            setupChartListener()
+            setupPeriodSpinner() // This will now trigger the initial data load via its listener
+
+            Log.d(TAG, "onViewCreated: Setup complete.")
+
+        } catch (e: IllegalStateException) {
             Log.e(TAG, "Error initializing views", e)
-            throw e
-        }
-    }
-    
-    private fun setupTransactionsRecyclerView() {
-        try {
-            Log.d(TAG, "Setting up transactions RecyclerView")
-            
-            // Create and set the adapter
-            transactionAdapter = TransactionAdapter()
-            
-            // Configure the RecyclerView
-            transactionsRecyclerView.apply {
-                layoutManager = LinearLayoutManager(requireContext())
-                adapter = transactionAdapter
-            }
-            
-            Log.d(TAG, "Transactions RecyclerView setup complete")
+            showToast("Error: Could not load dashboard components.")
+            // Optionally show a simplified error state in the UI
         } catch (e: Exception) {
-            Log.e(TAG, "Error setting up transactions RecyclerView", e)
-            showToast("Error setting up transactions: ${e.message}")
+            Log.e(TAG, "Error during onViewCreated setup", e)
+            showToast("Error setting up dashboard: ${e.message}")
         }
     }
 
-    private fun loadSampleTransactions() {
+    private fun initializeViews(view: View) {
         try {
-            Log.d(TAG, "Starting to load sample transactions from TestData")
-            
-            // Get transactions from TestData utility class
-            val transactions = TestData.getSampleTransactions()
-            
-            // Check if we have transactions
-            if (transactions.isEmpty()) {
-                Log.w(TAG, "Warning: No sample transactions were created")
-            } else {
-                Log.d(TAG, "Loaded ${transactions.size} sample transactions")
-            }
-            
-            // Display transactions - check for null adapter
-            if (::transactionAdapter.isInitialized) {
-                transactionAdapter.setTransactions(transactions)
-                Log.d(TAG, "Set transactions on adapter")
-            } else {
-                Log.e(TAG, "TransactionAdapter not initialized!")
-            }
-            
-            // Update balance
-            updateBalance(transactions)
-            
-            Log.d(TAG, "Sample transactions loaded successfully")
+            transactionsRecyclerView = view.findViewById(R.id.transactionsRecyclerView)
+            pieChart = view.findViewById(R.id.pieChart)
+            periodSpinner = view.findViewById(R.id.periodSpinner)
+            totalBudgetTextView = view.findViewById(R.id.totalBudgetTextView) // Note: Budget value isn't loaded from Firestore yet
+            totalSpentTextView = view.findViewById(R.id.totalSpentTextView)
+            remainingTextView = view.findViewById(R.id.remainingTextView) // Note: Remaining value isn't calculated yet
+            balanceTextView = view.findViewById(R.id.balanceTextView)
+            balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
+            balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
+            Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading sample transactions", e)
-            showToast("Could not load transaction data: ${e.message}")
+            Log.e(TAG, "Error initializing views", e)
+            // Throw specific error to be caught in onViewCreated
+            throw IllegalStateException("Could not initialize essential views in DashboardFragment", e)
         }
     }
-    
+
+    private fun setupTransactionsRecyclerView() {
+        Log.d(TAG, "setupTransactionsRecyclerView: Setting up...")
+        transactionAdapter = TransactionAdapter() // Initialize adapter
+        transactionsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = transactionAdapter
+            // Add item decoration for spacing if needed
+            // addItemDecoration(DividerItemDecoration(context, LinearLayoutManager.VERTICAL))
+        }
+        Log.d(TAG, "setupTransactionsRecyclerView: Setup complete.")
+    }
+
+
     private fun updateBalance(transactions: List<Transaction>) {
         var balance = 0.0
-        for (transaction in transactions) {
+        transactions.forEach { transaction ->
+            // Use safe access in case transaction object is malformed (though mapping should prevent this)
             if (transaction.type == Transaction.Type.INCOME) {
                 balance += transaction.amount
-            } else {
+            } else if (transaction.type == Transaction.Type.EXPENSE) {
                 balance -= transaction.amount
             }
         }
-        
-        balanceTextView.text = "R%.2f".format(balance)
+        // Use requireContext() safely with context check
+        context?.let {
+            balanceTextView.text = String.format(Locale.getDefault(), "R %.2f", balance)
+            Log.d(TAG, "updateBalance: Balance updated to R ${"%.2f".format(balance)}")
+        } ?: Log.w(TAG, "updateBalance: Context is null, cannot format currency.")
     }
 
     private fun setupPieChart() {
+        Log.d(TAG, "setupPieChart: Configuring pie chart.")
         pieChart.apply {
             description.isEnabled = false
-            setUsePercentValues(true)
-            setExtraOffsets(20f, 20f, 60f, 20f)
+            // setUsePercentValues(true) // Set this in updatePieChart when data exists
+
+            // <<< CHANGE: Reduced offsets to allow chart to fill more space
+            setExtraOffsets(5f, 5f, 5f, 5f) // Smaller offsets = potentially bigger chart
+
             dragDecelerationFrictionCoef = 0.95f
             isDrawHoleEnabled = true
-            setHoleColor(Color.TRANSPARENT)
-            setTransparentCircleColor(Color.WHITE)
-            setTransparentCircleAlpha(110)
-            holeRadius = 35f
-            transparentCircleRadius = 38f
-            setDrawCenterText(false)
+            setHoleColor(Color.TRANSPARENT) // Keep hole transparent
+
+            // <<< CHANGE: Increased hole size for more center text space
+            holeRadius = 58f // Increased from 50f
+            transparentCircleRadius = 61f // Keep slightly larger than holeRadius
+
+            setDrawCenterText(true)
+            centerText = "Total\nR 0.00" // Initial text
+
+            // <<< CHANGE: Optionally increase center text size slightly if hole is bigger
+            setCenterTextSize(16f) // Increased from 14f, adjust as needed
+            setCenterTextColor(Color.WHITE) // Keep white or change if background isn't dark
+
             rotationAngle = 0f
             isRotationEnabled = true
             isHighlightPerTapEnabled = true
-            
-            // Set chart animation
-            animateY(1400, com.github.mikephil.charting.animation.Easing.EaseInOutQuad)
-            
-            // Configure legend
+
+            // --- Legend Configuration ---
+            // Consider disabling if you need maximum space for the pie:
+            // legend.isEnabled = false
             legend.apply {
-                isEnabled = true
+                isEnabled = true // Keep enabled for now
                 textColor = Color.WHITE
-                textSize = 14f
-                xEntrySpace = 8f
-                yEntrySpace = 6f
-                formSize = 10f
-                form = com.github.mikephil.charting.components.Legend.LegendForm.CIRCLE
-                verticalAlignment = com.github.mikephil.charting.components.Legend.LegendVerticalAlignment.CENTER
-                horizontalAlignment = com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.RIGHT
-                orientation = com.github.mikephil.charting.components.Legend.LegendOrientation.VERTICAL
+                textSize = 10f // Keep legend text size reasonable
+                formSize = 8f
+                form = Legend.LegendForm.CIRCLE
+                verticalAlignment = Legend.LegendVerticalAlignment.CENTER
+                horizontalAlignment = Legend.LegendHorizontalAlignment.RIGHT
+                orientation = Legend.LegendOrientation.VERTICAL
                 setDrawInside(false)
+                isWordWrapEnabled = true
                 yOffset = 0f
-                xOffset = 10f
+                // <<< CHANGE: Increase X Offset slightly if legend feels too close after reducing chart offsets
+                xOffset = 10f // Slightly more space from the chart edge
             }
-            
-            setDrawEntryLabels(false)
-            minOffset = 15f
+
+            setDrawEntryLabels(false) // Keep slice labels off
+            // setEntryLabelColor(Color.WHITE) // Not needed if entry labels are off
+            // setEntryLabelTextSize(10f)    // Not needed if entry labels are off
+
+            // --- No Data Text ---
+            context?.let { ctx ->
+                setNoDataText("No expense data for this period.")
+                setNoDataTextColor(ContextCompat.getColor(ctx, android.R.color.darker_gray))
+            } ?: Log.w(TAG, "setupPieChart: Context is null, cannot set no data text color.")
         }
-    }
-    
-    private fun setupPeriodSpinner() {
-        val periods = arrayOf("This Month", "Last Month", "This Year", "Custom")
-        
-        val adapter = object : ArrayAdapter<String>(
-            requireContext(),
-            android.R.layout.simple_spinner_item,
-            periods
-        ) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.parseColor("#FFD700"))
-                    textSize = 16f
-                    setPadding(8, 8, 8, 8)
-                }
-                return view
-            }
-            
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getDropDownView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.WHITE)
-                    textSize = 16f
-                    setPadding(16, 16, 16, 16)
-                    setBackgroundColor(Color.parseColor("#1E1E1E"))
-                }
-                return view
-            }
-        }
-        
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        periodSpinner.adapter = adapter
-        
-        // Set the background tint of the spinner
-        periodSpinner.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FFD700"))
-    }
-    
-    private fun loadBudgetData() {
-        try {
-            Log.d(TAG, "Loading budget data")
-            // Create sample data directly here for testing
-            val budgetCategories = listOf(
-                BudgetCategory("Rent", 5000.0, 4000.0),
-                BudgetCategory("Groceries", 2000.0, 1500.0),
-                BudgetCategory("Transport", 1000.0, 800.0),
-                BudgetCategory("Entertainment", 1500.0, 1200.0),
-                BudgetCategory("Utilities", 1200.0, 1000.0)
-            )
-            
-            // Calculate totals
-            var totalBudget = 0.0
-            var totalSpent = 0.0
-            
-            for (category in budgetCategories) {
-                totalBudget += category.budgetAmount
-                totalSpent += category.spentAmount
-            }
-            
-            val remaining = totalBudget - totalSpent
-            
-            // Update UI
-            totalBudgetTextView.text = "R%.2f".format(totalBudget)
-            totalSpentTextView.text = "R%.2f".format(totalSpent)
-            remainingTextView.text = "R%.2f".format(remaining)
-            
-            // Update pie chart with the categories
-            updatePieChart(budgetCategories)
-            Log.d(TAG, "Budget data loaded and chart updated")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading budget data", e)
-            e.printStackTrace()
-        }
-    }
-    
-    private fun updatePieChart(categories: List<BudgetCategory>) {
-        try {
-            Log.d(TAG, "Updating pie chart with ${categories.size} categories")
-            val entries = ArrayList<PieEntry>()
-            val colors = ArrayList<Int>()
-            
-            // Add entries for each category with spent amount
-            categories.forEach { category ->
-                Log.d(TAG, "Processing category: ${category.name}, spent: ${category.spentAmount}")
-                if (category.spentAmount > 0) {
-                    entries.add(PieEntry(category.spentAmount.toFloat(), category.name))
-                    colors.add(when (category.name.lowercase()) {
-                        "rent" -> Color.parseColor("#F44336")
-                        "groceries" -> Color.parseColor("#4CAF50")
-                        "transport" -> Color.parseColor("#2196F3")
-                        "entertainment" -> Color.parseColor("#E91E63")
-                        "utilities" -> Color.parseColor("#9C27B0")
-                        else -> Color.parseColor("#607D8B")
-                    })
-                }
-            }
-            
-            Log.d(TAG, "Created ${entries.size} pie entries")
-            
-            if (entries.isNotEmpty()) {
-                val dataSet = PieDataSet(entries, "")
-                dataSet.apply {
-                    this.colors = colors
-                    setDrawValues(false)
-                    sliceSpace = 1f
-                    selectionShift = 2f
-                }
-                
-                val data = PieData(dataSet)
-                pieChart.data = data
-                
-                // Force layout and refresh
-                pieChart.post {
-                    pieChart.invalidate()
-                    Log.d(TAG, "Pie chart refreshed")
-                }
-            } else {
-                Log.w(TAG, "No entries for pie chart")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating pie chart", e)
-            e.printStackTrace()
-        }
+        Log.d(TAG, "setupPieChart: Configuration complete.")
     }
 
-    private fun setupFabListeners() {
-        // addIncomeButton.setOnClickListener {
-        //     showTransactionDialog(Transaction.Type.INCOME)
-        // }
-        
-        // addExpenseButton.setOnClickListener {
-        //     showTransactionDialog(Transaction.Type.EXPENSE)
-        // }
-        
+    private fun setupChartListener() {
+        Log.d(TAG, "setupChartListener: Setting up chart value selection listener.")
+        pieChart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+            override fun onValueSelected(e: Entry?, h: Highlight?) { // Parameters are nullable
+                if (e is PieEntry && e.label != null) {
+                    val categoryName = e.label
+                    Log.d(TAG, "Pie slice selected: Category '$categoryName'")
+                    navigateToCategoryDetails(categoryName)
+                } else {
+                    Log.w(TAG, "Selected entry is not a PieEntry or its label is null.")
+                }
+            }
+
+            override fun onNothingSelected() {
+                Log.d(TAG, "Pie chart - nothing selected")
+            }
+        })
+    }
+
+    private fun setupPeriodSpinner() {
+        Log.d(TAG, "setupPeriodSpinner: Setting up period spinner.")
+        val periods = listOf("This Month", "Last Month", "This Year") // Consider making this an enum
+
+        // Use context safely
+        context?.let { ctx ->
+            val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, periods)
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            periodSpinner.adapter = adapter
+
+            periodSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    // Style the selected item (optional, handle potential null view)
+                    (view as? TextView)?.setTextColor(Color.parseColor("#FFD700"))
+                    val selectedPeriod = periods[position]
+                    Log.i(TAG, "Period selected via spinner: $selectedPeriod")
+                    loadTransactionsForPeriod(selectedPeriod) // Trigger Firestore load
+                }
+                override fun onNothingSelected(parent: AdapterView<*>?) { /* No action needed */ }
+            }
+            // Set background tint safely
+            periodSpinner.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FFD700"))
+            Log.d(TAG, "setupPeriodSpinner: Setup complete.")
+        } ?: Log.e(TAG, "setupPeriodSpinner: Context is null, cannot setup spinner.")
+    }
+
+
+    private fun updatePieChart(categoryTotals: Map<String, Double>) {
+        Log.d(TAG, "updatePieChart: Updating with ${categoryTotals.size} categories.")
+        if (!isAdded) {
+            Log.w(TAG, "updatePieChart: Fragment not attached, skipping update.")
+            return
+        }
+
+        // Check for empty or all-zero data
+        val positiveEntries = categoryTotals.filter { it.value > 0 }
+        if (positiveEntries.isEmpty()) {
+            pieChart.data = null
+            pieChart.centerText = "Total\nR 0.00"
+            // <<< ADDED: Ensure usePercentValues is false when there's no data
+            pieChart.setUsePercentValues(false)
+            pieChart.invalidate()
+            Log.d(TAG, "updatePieChart: No positive expense data, chart cleared.")
+            return
+        }
+
+        val entries = ArrayList<PieEntry>()
+        positiveEntries.forEach { (category, total) ->
+            entries.add(PieEntry(total.toFloat(), category))
+        }
+
+        Log.d(TAG, "updatePieChart: Created ${entries.size} PieEntry objects.")
+
+        val dataSet = PieDataSet(entries, "")
+        dataSet.apply {
+            colors = getChartColors(positiveEntries.keys.toList())
+            sliceSpace = 3f
+            selectionShift = 5f
+
+            // --- Value (Percentage) Configuration ---
+            setDrawValues(true)
+
+            // <<< CHANGE: Set values to draw INSIDE the slices >>>
+            yValuePosition = PieDataSet.ValuePosition.INSIDE_SLICE
+
+            // <<< CHANGE: Set text size for percentages (adjust as needed) >>>
+            valueTextSize = 11f // Keep slightly larger size for now
+
+            valueTextColor = Color.WHITE
+
+            // Use PercentFormatter
+            valueFormatter = PercentFormatter(pieChart)
+        }
+
+        val data = PieData(dataSet)
+
+        pieChart.data = data
+
+        // <<< IMPORTANT: Call setUsePercentValues AFTER setting data when using PercentFormatter(pieChart)
+        pieChart.setUsePercentValues(true)
+
+        // Update center text
+        val totalSpent = positiveEntries.values.sum()
+        pieChart.centerText = String.format(Locale.getDefault(), "Total\nR %.2f", totalSpent)
+
+        // Refresh chart
+        pieChart.animateY(1000) // Keep animation
+        pieChart.invalidate()
+        Log.d(TAG, "updatePieChart: Chart updated and refreshed.")
+    }
+
+
+    private fun setupButtonListeners() {
+        Log.d(TAG, "setupButtonListeners: Setting up income/expense button listeners.")
         balanceIncomeButton.setOnClickListener {
+            Log.d(TAG, "Add Income button clicked.")
             showTransactionDialog(Transaction.Type.INCOME)
         }
-        
         balanceExpenseButton.setOnClickListener {
+            Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
         }
     }
 
+
+    // *************************************************************************
+    // ** MODIFIED: showTransactionDialog for Automatic Expense Categorization **
+    // *************************************************************************
     private fun showTransactionDialog(type: Transaction.Type) {
-        val dialog = Dialog(requireContext())
-        dialog.setContentView(R.layout.dialog_add_transaction)
-        
-        // Store reference to current dialog
+        Log.d(TAG, "showTransactionDialog: Showing dialog for type: ${type.name}")
+        if (currentDialog?.isShowing == true) {
+            Log.w(TAG, "showTransactionDialog: Dialog already showing.")
+            return
+        }
+
+        // Use requireContext() safely, return if context is not available
+        val context = requireContext() ?: return
+
+        val dialog = Dialog(context)
+        dialog.setContentView(R.layout.dialog_add_transaction) // Use your modified layout
         currentDialog = dialog
-        
-        // Set dialog width to match parent with margins
-        val width = (resources.displayMetrics.widthPixels * 0.9).toInt()
-        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
-        
-        // Initialize dialog views
+
+        try {
+            val width = (resources.displayMetrics.widthPixels * 0.95).toInt()
+            dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+            dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting dialog layout params", e)
+        }
+
+        // Initialize dialog views (Assume IDs remain the same for now)
         val titleTextView = dialog.findViewById<TextView>(R.id.dialogTitleTextView)
-        val amountEditText = dialog.findViewById<TextInputEditText>(R.id.amountEditText)
-        val descriptionEditText = dialog.findViewById<TextInputEditText>(R.id.descriptionEditText)
-        val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+        val amountEditText = dialog.findViewById<EditText>(R.id.amountEditText) // Changed to EditText
+        val descriptionEditText = dialog.findViewById<EditText>(R.id.descriptionEditText) // Changed to EditText
+        val categoryInputLayout = dialog.findViewById<View>(R.id.categoryInputLayout) // Get the Layout container for category
         val takePictureButton = dialog.findViewById<Button>(R.id.takePictureButton)
         val chooseImageButton = dialog.findViewById<Button>(R.id.chooseImageButton)
+        val receiptImageView = dialog.findViewById<ImageView>(R.id.receiptImagePreview)
         val cancelButton = dialog.findViewById<Button>(R.id.cancelButton)
         val addButton = dialog.findViewById<Button>(R.id.addButton)
-        
-        // Reset image selection state
+
+        if (amountEditText == null || descriptionEditText == null || categoryInputLayout == null || addButton == null || cancelButton == null || titleTextView == null) {
+            Log.e(TAG, "showTransactionDialog: Could not find essential views. Aborting.")
+            showToast("Error displaying dialog.")
+            dialog.dismiss()
+            currentDialog = null
+            return
+        }
+
+        // Reset image selection
         selectedImageUri = null
-        dialog.findViewById<ImageView>(R.id.receiptImagePreview)?.setImageResource(android.R.drawable.ic_menu_gallery)
-        
-        // Set dialog title based on type
+        receiptImageView?.setImageResource(android.R.drawable.ic_menu_gallery) // Reset preview
+
+        // Set Title and Add Button text
         titleTextView.text = if (type == Transaction.Type.INCOME) "Add Income" else "Add Expense"
-        
-        // Setup category dropdown
-        val categories = if (type == Transaction.Type.INCOME) {
-            arrayOf("Salary", "Investments", "Side Hustle", "Gift", "Other")
+        addButton.text = if (type == Transaction.Type.INCOME) "ADD INCOME" else "ADD EXPENSE"
+
+        // **MODIFICATION**: Hide category input for expenses
+        if (type == Transaction.Type.EXPENSE) {
+            categoryInputLayout.visibility = View.GONE
+            Log.d(TAG, "Dialog Type: EXPENSE - Hiding category input.")
         } else {
-            arrayOf("Rent", "Groceries", "Transport", "Entertainment", "Utilities", "Other")
+            categoryInputLayout.visibility = View.VISIBLE
+            Log.d(TAG, "Dialog Type: INCOME - Showing category input.")
+            // Setup Category Adapter for INCOME only
+            // (Assuming R.id.categoryAutoComplete is inside R.id.categoryInputLayout)
+            val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+            categoryAutoComplete?.let { // Ensure AutoCompleteTextView exists if layout is visible
+                val categories = CategorizationUtils.incomeCategories // Use specific income categories
+                val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, categories)
+                it.setAdapter(categoryAdapter)
+                it.threshold = 1
+                Log.d(TAG, "Category adapter set for INCOME with ${categories.size} categories.")
+            } ?: Log.w(TAG, "Category AutoCompleteTextView not found, even though layout is visible for INCOME.")
         }
-        
-        // Create a custom adapter with dark background and light text
-        val categoryAdapter = object : ArrayAdapter<String>(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            categories
-        ) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#1E1E1E"))
-                }
-                return view
-            }
-            
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getDropDownView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#1E1E1E"))
-                    setPadding(16, 16, 16, 16)
-                }
-                return view
-            }
-        }
-        
-        categoryAutoComplete.setAdapter(categoryAdapter)
-        
-        // Set dropdown background
-        categoryAutoComplete.setDropDownBackgroundResource(android.R.color.background_dark)
-        
-        // Setup image capture and gallery buttons
-        takePictureButton.setOnClickListener {
-            if (ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.CAMERA
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                dispatchTakePictureIntent()
-            } else {
-                // Request camera permission
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }
-        
-        chooseImageButton.setOnClickListener {
-            openGallery()
-        }
-        
-        // Setup button click listeners for cancel/add
+
+
+        // Keep image button listeners
+        takePictureButton?.setOnClickListener { if (checkCameraPermission()) dispatchTakePictureIntent() }
+        chooseImageButton?.setOnClickListener { openGallery() }
+
         cancelButton.setOnClickListener {
+            Log.d(TAG, "Add Transaction Dialog: Cancel clicked.")
             dialog.dismiss()
             currentDialog = null
         }
-        
+
         addButton.setOnClickListener {
-            val amount = amountEditText.text.toString().toDoubleOrNull()
-            val description = descriptionEditText.text.toString()
-            val category = categoryAutoComplete.text.toString()
-            
+            Log.d(TAG, "Add Transaction Dialog: Add button clicked.")
+            val amountStr = amountEditText.text.toString().trim()
+            val description = descriptionEditText.text.toString().trim()
+            val date = System.currentTimeMillis()
+
+            // Validation
+            if (amountStr.isBlank() || description.isBlank()) {
+                showToast("Please fill amount and description")
+                return@setOnClickListener
+            }
+            val amount = amountStr.toDoubleOrNull()
             if (amount == null || amount <= 0) {
-                showToast("Please enter a valid amount")
+                showToast("Please enter a valid positive amount")
                 return@setOnClickListener
             }
-            
-            if (description.isBlank()) {
-                showToast("Please enter a description")
-                return@setOnClickListener
+
+            // **MODIFICATION**: Determine Category
+            val category: String
+            if (type == Transaction.Type.INCOME) {
+                // Get category from dropdown for income
+                val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+                category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
+                if (category.isBlank() || !CategorizationUtils.incomeCategories.contains(category)) {
+                    showToast("Please select a valid income category")
+                    return@setOnClickListener
+                }
+                Log.d(TAG,"Income category selected: $category")
+            } else {
+                // Suggest category automatically for expense
+                category = CategorizationUtils.suggestCategory(description) ?: "Other" // Default to "Other" if no suggestion
+                Log.d(TAG,"Expense category suggested: $category for description: '$description'")
             }
-            
-            if (category.isBlank()) {
-                showToast("Please select a category")
-                return@setOnClickListener
-            }
-            
-            // Create and add the new transaction
+
             val transaction = Transaction(
-                id = System.currentTimeMillis(),
+                id = date, // Temporary local ID
                 type = type,
-                amount = amount, // Always store positive amount
+                amount = amount,
                 description = description,
-                category = category,
-                date = System.currentTimeMillis(),
-                receiptImageUri = selectedImageUri?.toString()
+                category = category, // Use determined category
+                date = date,
+                receiptImageUri = selectedImageUri?.toString() // Keep image URI
             )
-            
-            // Add to adapter
-            val currentTransactions = transactionAdapter.getTransactions().toMutableList()
-            currentTransactions.add(0, transaction)
-            transactionAdapter.setTransactions(currentTransactions)
-            
-            // Update balance
-            updateBalance(currentTransactions)
-            
-            // Close dialog
+
+            Log.d(TAG, "Attempting to save transaction: $transaction")
+            saveTransactionToFirestore(transaction) // Save to Firestore
+
             dialog.dismiss()
             currentDialog = null
-            
-            // Show success message
-            showToast("${if (type == Transaction.Type.INCOME) "Income" else "Expense"} added successfully")
         }
-        
+
+        dialog.setOnDismissListener {
+            Log.d(TAG, "Add Transaction Dialog dismissed.")
+            currentDialog = null
+        }
+
         dialog.show()
+        Log.d(TAG, "showTransactionDialog: Dialog shown.")
     }
+    // *************************************************************************
+    // ** END OF MODIFICATION **
+    // *************************************************************************
+
 
     private fun showToast(message: String) {
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        // Use context safely
+        context?.let {
+            Toast.makeText(it, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
+
     companion object {
+        // Define TAG consistently
+        private const val TAG = "DashboardFragment"
         fun newInstance(): DashboardFragment {
-            Log.d("DashboardFragment", "Creating new instance of DashboardFragment")
+            Log.d(TAG, "Creating new instance requested.")
             return DashboardFragment()
         }
     }
-    
-    // BudgetCategory data class
-    data class BudgetCategory(
-        val name: String,
-        val budgetAmount: Double,
-        val spentAmount: Double
-    )
+
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        Log.d(TAG, "onDestroyView: Cleaning up dialog reference.")
+        currentDialog?.dismiss() // Dismiss safely
         currentDialog = null
+        // Optional: Nullify view references if not using view binding
+        // pieChart = null // etc.
+        super.onDestroyView()
     }
 
+
     private fun initializeActivityResultLaunchers() {
-        // Camera result launcher
-        takePictureLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
+        Log.d(TAG, "initializeActivityResultLaunchers: Setting up.")
+        takePictureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result -> // Use correct contract
             if (result.resultCode == Activity.RESULT_OK) {
                 currentPhotoPath?.let { path ->
-                    val bitmap = BitmapFactory.decodeFile(path)
-                    currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
-                        imageView.setImageBitmap(bitmap)
-                        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                    val file = File(path)
+                    if(file.exists() && file.length() > 0) { // Check file size too
+                        Log.d(TAG, "Camera Result OK, File exists: $path, Size: ${file.length()}")
+                        // Get URI using FileProvider *after* confirming file exists
+                        selectedImageUri = try {
+                            FileProvider.getUriForFile(requireContext(),"com.example.notbroke.fileprovider", file)
+                        } catch (e: IllegalArgumentException) {
+                            Log.e(TAG, "Error getting URI for file: $path", e)
+                            null
+                        }
+
+                        if (selectedImageUri != null) {
+                            loadBitmapFromUri(selectedImageUri)
+                        } else {
+                            showToast("Failed to get image URI.")
+                        }
+
+                    } else {
+                        Log.e(TAG, "Camera Result OK, but file not found or empty at: $path")
+                        showToast("Failed to save picture")
+                        currentPhotoPath = null // Reset path if file is bad
                     }
-                    selectedImageUri = Uri.fromFile(File(path))
+                } ?: run {
+                    Log.e(TAG, "Camera Result OK, but currentPhotoPath is null")
+                    showToast("Failed to get picture path")
                 }
+            } else {
+                Log.w(TAG, "Camera Result NOT OK, Code: ${result.resultCode}")
+                // Optionally delete the empty file if created
+                currentPhotoPath?.let { path -> File(path).delete() }
+                currentPhotoPath = null
             }
         }
-        
-        // Gallery result launcher
-        pickImageLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
+        pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result -> // Use correct contract
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let { uri ->
-                    try {
-                        val inputStream = requireContext().contentResolver.openInputStream(uri)
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-                        currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
-                            imageView.setImageBitmap(bitmap)
-                            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-                        }
-                        selectedImageUri = uri
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error loading image from gallery", e)
-                        showToast("Failed to load image")
-                    }
+                    Log.d(TAG, "Gallery Result OK, URI: $uri")
+                    // Persist permission for gallery URI if needed, though less common for simple display
+                    // val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    // requireContext().contentResolver.takePersistableUriPermission(uri, takeFlags)
+                    selectedImageUri = uri
+                    loadBitmapFromUri(selectedImageUri) // Load preview
+                } ?: run {
+                    Log.w(TAG, "Gallery Result OK, but URI is null")
+                    showToast("Failed to get image from gallery")
                 }
+            } else {
+                Log.w(TAG, "Gallery Result NOT OK, Code: ${result.resultCode}")
             }
         }
-        
-        // Permission request launcher
-        requestPermissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
+        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted -> // Use correct contract
             if (isGranted) {
-                // Permission granted, proceed with camera or gallery
-                dispatchTakePictureIntent()
+                Log.d(TAG, "Camera Permission Granted.")
+                dispatchTakePictureIntent() // Retry taking picture
             } else {
-                // Permission denied
+                Log.w(TAG, "Camera Permission Denied.")
                 showToast("Camera permission is required to take pictures")
             }
         }
     }
-    
+
+
+    private fun loadBitmapFromUri(uri: Uri?) {
+        if (uri == null) return
+        // Use context safely
+        context?.let { ctx ->
+            try {
+                // Use contentResolver to open InputStream
+                ctx.contentResolver.openInputStream(uri)?.use { inputStream -> // Use 'use' for auto-closing
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
+                        imageView.setImageBitmap(bitmap)
+                        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                        Log.d(TAG, "Bitmap loaded into preview from URI: $uri")
+                    }
+                } ?: Log.e(TAG, "Failed to open input stream for URI: $uri")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading bitmap from URI: $uri", e)
+                showToast("Failed to load image preview")
+                // Reset preview on error
+                currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
+        } ?: Log.w(TAG, "loadBitmapFromUri: Context is null.")
+    }
+
+
+    private fun checkCameraPermission(): Boolean {
+        // Use context safely
+        return context?.let { ctx ->
+            if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                true
+            } else {
+                Log.d(TAG, "Camera permission not granted, requesting...")
+                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                false
+            }
+        } ?: run {
+            Log.w(TAG, "checkCameraPermission: Context is null, cannot check permission.")
+            false // Cannot proceed without context
+        }
+    }
+
+
     private fun dispatchTakePictureIntent() {
-        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-            // Ensure that there's a camera activity to handle the intent
-            takePictureIntent.resolveActivity(requireActivity().packageManager)?.also {
-                // Create the File where the photo should go
-                val photoFile: File? = try {
-                    createImageFile()
-                } catch (ex: IOException) {
-                    // Error occurred while creating the File
-                    Log.e(TAG, "Error creating image file", ex)
-                    showToast("Error creating image file")
-                    null
+        Log.d(TAG, "dispatchTakePictureIntent: Attempting to launch camera.")
+        // Use context safely
+        context?.let { ctx ->
+            Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+                // Ensure the intent can be resolved
+                if (takePictureIntent.resolveActivity(ctx.packageManager) == null) {
+                    Log.e(TAG, "No camera app found to handle intent.")
+                    showToast("No camera application found")
+                    return
                 }
-                
-                // Continue only if the File was successfully created
-                photoFile?.also {
+
+                try {
+                    val photoFile: File = createImageFile()
                     val photoURI: Uri = FileProvider.getUriForFile(
-                        requireContext(),
-                        "com.example.notbroke.fileprovider",
-                        it
+                        ctx,
+                        "com.example.notbroke.fileprovider", // Ensure this matches AndroidManifest provider authority
+                        photoFile
                     )
+                    currentPhotoPath = photoFile.absolutePath // Store path *after* successful file creation
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    // Grant temporary write permission to the camera app
+                    takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    Log.d(TAG, "Launching camera intent with output URI: $photoURI and path: $currentPhotoPath")
                     takePictureLauncher.launch(takePictureIntent)
+                } catch (ex: IOException) {
+                    Log.e(TAG, "Error creating image file", ex)
+                    showToast("Could not prepare camera (file error)")
+                    currentPhotoPath = null // Reset path on error
+                } catch (ex: IllegalArgumentException) {
+                    Log.e(TAG, "Error creating FileProvider URI (check provider config)", ex)
+                    showToast("Could not prepare camera (URI error)")
+                    currentPhotoPath = null
+                } catch (ex: SecurityException) {
+                    Log.e(TAG, "Security exception launching camera, check permissions?", ex)
+                    showToast("Camera permission issue")
+                    currentPhotoPath = null
                 }
-            } ?: run {
-                showToast("No camera app found")
+            }
+        } ?: Log.w(TAG, "dispatchTakePictureIntent: Context is null.")
+    }
+
+
+
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        // Use context safely
+        val context = requireContext() ?: throw IOException("Context is unavailable")
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.UK).format(Date())
+        val storageDir: File? = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+
+        if (storageDir == null) { // Check if storageDir itself is null
+            Log.e(TAG, "External picture directory is null.")
+            throw IOException("Cannot access picture storage directory")
+        }
+        if (!storageDir.exists() && !storageDir.mkdirs()) { // Check if exists OR can be created
+            Log.e(TAG, "External picture directory does not exist and could not be created.")
+            throw IOException("Cannot create picture storage directory")
+        }
+
+        Log.d(TAG, "Creating image file in: ${storageDir.absolutePath}")
+        // Create the file
+        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+    }
+
+
+    private fun openGallery() {
+        Log.d(TAG, "openGallery: Launching gallery picker intent.")
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        // Consider adding type filtering if needed: intent.type = "image/*"
+        pickImageLauncher.launch(intent)
+    }
+
+    // ==========================================================
+    // ===== Firestore & Data Handling Methods (with improvements) ====
+    // ==========================================================
+
+    private fun saveTransactionToFirestore(transaction: Transaction) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.w(TAG, "saveTransactionToFirestore: User not logged in.")
+            showToast("Error: Not logged in")
+            return
+        }
+        Log.d(TAG, "saveTransactionToFirestore: Saving transaction for user $userId")
+
+        // Using Server Timestamp is generally recommended for consistency
+        val transactionData = mapOf(
+            "amount" to transaction.amount,
+            "type" to transaction.type.name,
+            "description" to transaction.description,
+            "category" to transaction.category,
+            // "date" to transaction.date, // Keep local if offline support is complex
+            "date" to com.google.firebase.firestore.FieldValue.serverTimestamp(), // Use server time
+            "receiptImageUri" to transaction.receiptImageUri // Store as String or null
+        )
+
+        db.collection("users").document(userId)
+            .collection("transactions")
+            .add(transactionData) // Let Firestore generate the ID
+            .addOnSuccessListener { documentReference ->
+                Log.i(TAG, "saveTransactionToFirestore: Success! Document ID: ${documentReference.id}")
+                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} added")
+                // Refresh data for the currently selected period
+                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
+                Log.d(TAG, "saveTransactionToFirestore: Refreshing data for period '$selectedPeriod'.")
+                loadTransactionsForPeriod(selectedPeriod)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "saveTransactionToFirestore: Error adding transaction", e)
+                showToast("Error saving transaction: ${e.localizedMessage}")
+            }
+    }
+
+    private fun loadTransactionsForPeriod(period: String) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.w(TAG, "loadTransactionsForPeriod: User not logged in.")
+            clearUiData()
+            return
+        }
+
+        val (startDate, endDate) = getDateRangeForPeriod(period)
+        if (startDate == null || endDate == null) {
+            Log.e(TAG, "loadTransactionsForPeriod: Invalid date range for period '$period'. Cannot load.")
+            clearUiData()
+            return
+        }
+
+        Log.i(TAG, "loadTransactionsForPeriod: Loading for '$period' (User: $userId, Start: ${Date(startDate)}, End: ${Date(endDate)})")
+        // Show loading indicator?
+
+        viewLifecycleOwner.lifecycleScope.launch { // Use lifecycleScope
+            try {
+                // Convert Long dates to Firestore Timestamp for querying
+                val startTimestamp = com.google.firebase.Timestamp(startDate / 1000, (startDate % 1000 * 1000000).toInt())
+                val endTimestamp = com.google.firebase.Timestamp(endDate / 1000, (endDate % 1000 * 1000000).toInt())
+
+                val querySnapshot = db.collection("users").document(userId)
+                    .collection("transactions")
+                    .whereGreaterThanOrEqualTo("date", startTimestamp) // Query with Timestamp
+                    .whereLessThanOrEqualTo("date", endTimestamp)     // Query with Timestamp
+                    // Keep ordering by date on client side for flexibility
+                    .get()
+                    .await() // Use await() for cleaner async handling
+
+                Log.d(TAG, "loadTransactionsForPeriod: Firestore fetch successful, ${querySnapshot.size()} documents.")
+                processFirestoreResults(querySnapshot)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "loadTransactionsForPeriod: Error fetching from Firestore", e)
+                showToast("Error loading transactions: ${e.localizedMessage}")
+                clearUiData()
+            } finally {
+                // Hide loading indicator
             }
         }
     }
-    
-    @Throws(IOException::class)
-    private fun createImageFile(): File {
-        // Create an image file name
-        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile(
-            "JPEG_${timeStamp}_", /* prefix */
-            ".jpg", /* suffix */
-            storageDir /* directory */
-        ).apply {
-            // Save a file: path for use with ACTION_VIEW intents
-            currentPhotoPath = absolutePath
+
+    private fun processFirestoreResults(snapshot: QuerySnapshot) {
+        Log.d(TAG, "processFirestoreResults: Processing ${snapshot.size()} documents.")
+        val transactions = snapshot.documents.mapNotNull { doc ->
+            try {
+                val data = doc.data ?: return@mapNotNull null // Skip if data is null
+
+                val typeString = data["type"] as? String
+                val transactionType = try {
+                    if (typeString != null) Transaction.Type.valueOf(typeString) else Transaction.Type.EXPENSE
+                } catch (e: IllegalArgumentException) {
+                    Log.w(TAG, "Invalid type '$typeString' in doc ${doc.id}, defaulting to EXPENSE.")
+                    Transaction.Type.EXPENSE
+                }
+
+                // Handle Firestore Timestamp for date
+                val firestoreTimestamp = data["date"] as? com.google.firebase.Timestamp
+                val dateMillis = firestoreTimestamp?.toDate()?.time ?: run {
+                    // Fallback if date is stored as Long (should be avoided)
+                    Log.w(TAG,"Date field in doc ${doc.id} is not a Timestamp, trying Long.")
+                    (data["date"] as? Long) ?: 0L
+                }
+                if (dateMillis == 0L) {
+                    Log.w(TAG,"Could not parse date for doc ${doc.id}, skipping.")
+                    return@mapNotNull null // Skip if date is invalid
+                }
+
+
+                Transaction(
+                    id = doc.id.hashCode().toLong(), // Use Firestore ID hash
+                    amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
+                    type = transactionType,
+                    description = data["description"] as? String ?: "",
+                    category = data["category"] as? String ?: "Uncategorized",
+                    date = dateMillis, // Use parsed milliseconds
+                    receiptImageUri = data["receiptImageUri"] as? String // Nullable
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error mapping document ${doc.id}", e)
+                null // Skip documents that fail mapping
+            }
+        }.sortedByDescending { it.date } // Sort by date descending
+
+        Log.i(TAG, "processFirestoreResults: Mapped ${transactions.size} transactions successfully.")
+
+        // Update UI on the main thread safely
+        activity?.runOnUiThread {
+            if (!isAdded) {
+                Log.w(TAG, "processFirestoreResults: Fragment not attached, skipping UI update.")
+                return@runOnUiThread
+            }
+
+            Log.d(TAG, "Updating UI: RecyclerView, Balance, PieChart")
+            transactionAdapter.setTransactions(transactions)
+            updateBalance(transactions)
+
+            val expenseTransactions = transactions.filter { it.type == Transaction.Type.EXPENSE }
+            val expenseCategoryTotals = calculateCategoryTotals(expenseTransactions)
+            updatePieChart(expenseCategoryTotals)
+
+            // Update Budget Summary Texts (Placeholders)
+            val totalSpent = expenseCategoryTotals.values.sum()
+            totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
+            totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
+            remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
+
+            Log.d(TAG, "UI Update complete.")
         }
     }
-    
-    private fun openGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        pickImageLauncher.launch(intent)
+
+
+    private fun calculateCategoryTotals(expenseTransactions: List<Transaction>): Map<String, Double> {
+        Log.d(TAG, "calculateCategoryTotals: Calculating for ${expenseTransactions.size} expenses.")
+        if (expenseTransactions.isEmpty()) return emptyMap()
+
+        // Group by category, sum amounts, filter zero totals, and sort
+        val totals = expenseTransactions
+            .groupBy { it.category.trim().ifBlank { "Uncategorized" } } // Trim and handle blank categories
+            .mapValues { (_, transactionsInCategory) ->
+                transactionsInCategory.sumOf { it.amount }
+            }
+            .filterValues { it > 0 } // Only include categories with spending > 0
+            .toSortedMap() // Sort categories alphabetically
+
+        Log.d(TAG, "calculateCategoryTotals: Calculated totals for ${totals.size} categories.")
+        return totals
     }
-} 
+
+    private fun getDateRangeForPeriod(period: String): Pair<Long?, Long?> {
+        val calendar = Calendar.getInstance()
+        var startDateMillis: Long?
+        var endDateMillis: Long?
+
+        try {
+            when (period) {
+                "This Month" -> {
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    setCalendarToStartOfDay(calendar)
+                    startDateMillis = calendar.timeInMillis
+
+                    // End of month calculation (go to start of next month, subtract 1ms)
+                    calendar.add(Calendar.MONTH, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    endDateMillis = calendar.timeInMillis
+                }
+                "Last Month" -> {
+                    // Go to start of this month
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    setCalendarToStartOfDay(calendar)
+                    // Subtract 1ms to get end of last month
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    endDateMillis = calendar.timeInMillis
+
+                    // Calendar is now at the end of last month. Set to start of last month.
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    setCalendarToStartOfDay(calendar)
+                    startDateMillis = calendar.timeInMillis
+                }
+                "This Year" -> {
+                    calendar.set(Calendar.DAY_OF_YEAR, 1)
+                    setCalendarToStartOfDay(calendar)
+                    startDateMillis = calendar.timeInMillis
+
+                    // End of year calculation
+                    calendar.set(Calendar.MONTH, Calendar.DECEMBER)
+                    calendar.set(Calendar.DAY_OF_MONTH, 31)
+                    setCalendarToEndOfDay(calendar)
+                    endDateMillis = calendar.timeInMillis
+                }
+                else -> {
+                    Log.w(TAG, "getDateRangeForPeriod: Unknown period '$period'. Returning null.")
+                    return Pair(null, null)
+                }
+            }
+            // Log the calculated date range for debugging
+            if(startDateMillis != null && endDateMillis != null) {
+                Log.d(TAG,"Date range for '$period': ${Date(startDateMillis)} to ${Date(endDateMillis)}")
+            }
+            // Store current range for navigation use
+            currentStartDate = startDateMillis ?: 0L
+            currentEndDate = endDateMillis ?: 0L
+            return Pair(startDateMillis, endDateMillis)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculating date range for '$period'", e)
+            return Pair(null, null)
+        }
+    }
+
+    // Helper to set Calendar time to 00:00:00.000
+    private fun setCalendarToStartOfDay(calendar: Calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+    }
+
+    // Helper to set Calendar time to 23:59:59.999
+    private fun setCalendarToEndOfDay(calendar: Calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+    }
+
+
+    // Helper to get consistent colors for categories
+    private fun getChartColors(categories: List<String>): List<Int> {
+        // Use a predefined color palette or generate consistent colors based on category hashcode
+        val colors = mutableListOf<Int>()
+        val predefinedColors = listOf(
+            Color.parseColor("#F44336"), Color.parseColor("#E91E63"), Color.parseColor("#9C27B0"),
+            Color.parseColor("#673AB7"), Color.parseColor("#3F51B5"), Color.parseColor("#2196F3"),
+            Color.parseColor("#03A9F4"), Color.parseColor("#00BCD4"), Color.parseColor("#009688"),
+            Color.parseColor("#4CAF50"), Color.parseColor("#8BC34A"), Color.parseColor("#CDDC39"),
+            Color.parseColor("#FFEB3B"), Color.parseColor("#FFC107"), Color.parseColor("#FF9800"),
+            Color.parseColor("#FF5722"), Color.parseColor("#795548"), Color.parseColor("#9E9E9E"),
+            Color.parseColor("#607D8B")
+        )
+
+        categories.forEachIndexed { index, category ->
+            // Use predefined colors first, then generate if needed
+            colors.add(predefinedColors.getOrElse(index % predefinedColors.size) {
+                // Fallback: generate color from hashcode if more categories than predefined colors
+                val hue = (category.hashCode() % 360).toFloat()
+                Color.HSVToColor(floatArrayOf(hue, 0.7f, 0.8f))
+            })
+        }
+        return colors
+    }
+
+
+    // Placeholder for navigation - implement this based on your navigation setup
+    private fun navigateToCategoryDetails(categoryName: String) {
+        if (currentStartDate == 0L || currentEndDate == 0L) {
+            Log.w(TAG, "navigateToCategoryDetails: Date range not set, cannot navigate.")
+            showToast("Error: Date range not available")
+            return
+        }
+        Log.i(TAG,"Attempting navigation to details for category: '$categoryName' (Period: ${Date(currentStartDate)} - ${Date(currentEndDate)})")
+        showToast("Navigate for: $categoryName") // Placeholder
+
+        // --- TODO: IMPLEMENT ACTUAL NAVIGATION ---
+        // e.g., using Navigation Component:
+        // val action = DashboardFragmentDirections.actionDashboardFragmentToCategoryDetailsFragment(
+        //     categoryName,
+        //     currentStartDate,
+        //     currentEndDate
+        // )
+        // findNavController().navigate(action)
+    }
+
+
+    private fun clearUiData() {
+        Log.d(TAG, "clearUiData: Clearing transaction list, chart, and balance.")
+        // Use runOnUiThread safely checking fragment attachment
+        activity?.runOnUiThread {
+            if (!isAdded) return@runOnUiThread
+            transactionAdapter.setTransactions(emptyList())
+            updatePieChart(emptyMap()) // This will handle clearing the chart
+            updateBalance(emptyList())
+            totalSpentTextView.text = "R 0.00"
+            totalBudgetTextView.text = "R ----.--"
+            remainingTextView.text = "R ----.--"
+        }
+    }
+
+} // === End of DashboardFragment class ===
