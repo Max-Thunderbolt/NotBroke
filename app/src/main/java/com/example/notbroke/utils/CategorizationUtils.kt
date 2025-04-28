@@ -1,6 +1,9 @@
 package com.example.notbroke.utils
 
 object CategorizationUtils {
+    //custom category temp storage(will update to database permanet storage)
+    private val customIncomeCategories = mutableListOf<String>()
+    private val customExpenseCategories = mutableListOf<String>()
 
     // Basic keyword-to-category mapping. Expand this significantly.
     // Basic keyword-to-category mapping.
@@ -34,8 +37,33 @@ object CategorizationUtils {
     // List of all possible categories (used for the dropdown) - now sorted
     val allCategories: List<String> = categoryRules.keys.toList()
 
-    // Income categories - define separately if needed for the dialog
-    val incomeCategories: List<String> = listOf("Salary", "Investments", "Freelance", "Gift", "Other Income").sorted()
+    // Income categories - define separately if needed for the dialog- making changes to now accept custom categories
+    val incomeCategories: List<String> = (listOf("Salary", "Investments", "Freelance", "Gift", "Other Income") + customIncomeCategories).sorted()
+
+    //expense categories - define separately if needed for the dialog- making changes to now accept custom categories
+    val expenseCategories: List<String> = (categoryRules.keys.toList() + customExpenseCategories).sorted()
+
+    // add custom income categories
+    fun addCustomIncomeCategory(category: String) {
+        if (!expenseCategories.contains(category)) {
+            customIncomeCategories.add(category)
+        }
+    }
+    //remove custom income categories
+    fun removeCustomIncomeCategory(category: String) {
+        customIncomeCategories.remove(category)
+    }
+
+    // add custom expense categories
+    fun addCustomExpenseCategory(category: String) {
+        if (!expenseCategories.contains(category)) {
+            customExpenseCategories.add(category)
+        }
+    }
+    //remove custom expense categories
+    fun removeCustomExpenseCategory(category: String) {
+        customExpenseCategories.remove(category)
+    }
 
 
     /**

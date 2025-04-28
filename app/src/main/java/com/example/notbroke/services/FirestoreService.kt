@@ -3,6 +3,9 @@ package com.example.notbroke.services
 import com.example.notbroke.models.Debt
 import com.example.notbroke.models.DebtStrategyType
 import com.example.notbroke.models.UserPreferences
+import com.example.notbroke.models.Transaction
+import com.example.notbroke.models.Reward
+import com.example.notbroke.models.NetWorthEntry
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -12,156 +15,15 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.NoSuchElementException
 
 class FirestoreService {
     private val db: FirebaseFirestore = Firebase.firestore
     private val debtsCollection = db.collection("debts")
     private val userPreferencesCollection = db.collection("userPreferences")
-    
-    // Create a new debt
-    suspend fun createDebt(debt: Debt): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val documentRef = debtsCollection.add(debt).await()
-            Result.success(documentRef.id)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Get all debts for a user
-    suspend fun getDebts(userId: String): Result<List<Debt>> = withContext(Dispatchers.IO) {
-        try {
-            val snapshot = debtsCollection
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-            
-            val debts = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(Debt::class.java)?.copy(id = doc.id)
-            }
-            Result.success(debts)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Observe debts in real-time
-    fun observeDebts(userId: String): Flow<List<Debt>> = callbackFlow {
-        val subscription = debtsCollection
-            .whereEqualTo("userId", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // Handle error
-                    return@addSnapshotListener
-                }
-                
-                if (snapshot != null) {
-                    val debts = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Debt::class.java)?.copy(id = doc.id)
-                    }
-                    trySend(debts)
-                }
-            }
-            
-        awaitClose { subscription.remove() }
-    }
-    
-    // Update an existing debt
-    suspend fun updateDebt(debtId: String, debt: Debt): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            debtsCollection.document(debtId)
-                .set(debt)
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Delete a debt
-    suspend fun deleteDebt(debtId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            debtsCollection.document(debtId)
-                .delete()
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Make a payment on a debt
-    suspend fun makePayment(debtId: String, paymentAmount: Double): Result<Double> = withContext(Dispatchers.IO) {
-        try {
-            val debtDoc = debtsCollection.document(debtId).get().await()
-            val debt = debtDoc.toObject(Debt::class.java)
-                ?: return@withContext Result.failure(Exception("Debt not found"))
-            
-            val amountApplied = debt.makePayment(paymentAmount)
-            
-            // Update the debt in Firestore
-            debtsCollection.document(debtId)
-                .set(debt)
-                .await()
-                
-            Result.success(amountApplied)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Get debt statistics
-    suspend fun getDebtStatistics(userId: String): Result<DebtStatistics> = withContext(Dispatchers.IO) {
-        try {
-            val snapshot = debtsCollection
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-            
-            val debts = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(Debt::class.java)
-            }
-            
-            val statistics = DebtStatistics(
-                totalDebt = debts.sumOf { it.totalAmount },
-                totalPaid = debts.sumOf { it.amountPaid },
-                totalMonthlyPayment = debts.sumOf { it.monthlyPayment },
-                debtCount = debts.size
-            )
-            
-            Result.success(statistics)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    // Observe debt statistics in real-time
-    fun observeDebtStatistics(userId: String): Flow<DebtStatistics> = callbackFlow {
-        val subscription = debtsCollection
-            .whereEqualTo("userId", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    return@addSnapshotListener
-                }
-                
-                if (snapshot != null) {
-                    val debts = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Debt::class.java)
-                    }
-                    
-                    val statistics = DebtStatistics(
-                        totalDebt = debts.sumOf { it.totalAmount },
-                        totalPaid = debts.sumOf { it.amountPaid },
-                        totalMonthlyPayment = debts.sumOf { it.monthlyPayment },
-                        debtCount = debts.size
-                    )
-                    
-                    trySend(statistics)
-                }
-            }
-            
-        awaitClose { subscription.remove() }
-    }
+    private val transactionsCollection = db.collection("transactions")
+    private val rewardsCollection = db.collection("rewards")
+    private val netWorthCollection = db.collection("netWorth")
     
     // Get user preferences
     suspend fun getUserPreferences(userId: String): Result<UserPreferences> = withContext(Dispatchers.IO) {
@@ -280,6 +142,218 @@ class FirestoreService {
         awaitClose { subscription.remove() }
     }
     
+    // Transaction Methods
+    suspend fun saveTransactionToFirestore(transaction: Transaction, userId: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val transactionWithUserId = transaction.copy(firestoreId = null) // Ensure we don't use local ID
+            val documentRef = transactionsCollection.add(transactionWithUserId).await()
+            Result.success(documentRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateTransactionInFirestore(transaction: Transaction): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val transactionId = transaction.firestoreId ?: return@withContext Result.failure(Exception("Transaction ID is required"))
+            transactionsCollection.document(transactionId)
+                .set(transaction)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteTransactionFromFirestore(transactionId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            transactionsCollection.document(transactionId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeTransactions(userId: String): Flow<List<Transaction>> = callbackFlow {
+        val subscription = transactionsCollection
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val transactions = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Transaction::class.java)?.copy(firestoreId = doc.id)
+                    }
+                    trySend(transactions)
+                }
+            }
+            
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun getTransactionsForPeriod(userId: String, startDate: Long, endDate: Long): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = transactionsCollection
+                .whereEqualTo("userId", userId)
+                .whereGreaterThanOrEqualTo("date", startDate)
+                .whereLessThanOrEqualTo("date", endDate)
+                .get()
+                .await()
+            
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Transaction::class.java)?.copy(firestoreId = doc.id)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getTransactionById(transactionId: String): Result<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            val doc = transactionsCollection.document(transactionId).get().await()
+            val transaction = doc.toObject(Transaction::class.java)
+            
+            if (transaction != null) {
+                Result.success(transaction.copy(firestoreId = doc.id))
+            } else {
+                Result.failure(NoSuchElementException("Transaction not found"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Reward Methods
+    suspend fun saveRewardToFirestore(reward: Reward, userId: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val documentRef = rewardsCollection.document()
+            val rewardWithId = reward.copy(id = documentRef.id.toIntOrNull() ?: 0)
+            documentRef.set(rewardWithId).await()
+            Result.success(documentRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateRewardInFirestore(reward: Reward): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            rewardsCollection.document(reward.id.toString())
+                .set(reward)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteRewardFromFirestore(rewardId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            rewardsCollection.document(rewardId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeRewards(userId: String): Flow<List<Reward>> = callbackFlow {
+        val subscription = rewardsCollection
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val rewards = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Reward::class.java)
+                    }
+                    trySend(rewards)
+                }
+            }
+            
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun getRewardById(rewardId: String): Result<Reward> = withContext(Dispatchers.IO) {
+        try {
+            val doc = rewardsCollection.document(rewardId).get().await()
+            val reward = doc.toObject(Reward::class.java)
+            
+            if (reward != null) {
+                Result.success(reward)
+            } else {
+                Result.failure(NoSuchElementException("Reward not found"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getRewardsByType(userId: String, type: String): Result<List<Reward>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = rewardsCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("type", type)
+                .get()
+                .await()
+            
+            val rewards = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Reward::class.java)
+            }
+            
+            Result.success(rewards)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getUnlockedRewards(userId: String): Result<List<Reward>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = rewardsCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isUnlocked", true)
+                .get()
+                .await()
+            
+            val rewards = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Reward::class.java)
+            }
+            
+            Result.success(rewards)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getClaimedRewards(userId: String): Result<List<Reward>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = rewardsCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("claimed", true)
+                .get()
+                .await()
+            
+            val rewards = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Reward::class.java)
+            }
+            
+            Result.success(rewards)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Helper method to get current user ID
+    fun getCurrentUserId(): String {
+        return Firebase.auth.currentUser?.uid ?: throw IllegalStateException("User not authenticated")
+    }
+    
     // Data class for debt statistics
     data class DebtStatistics(
         val totalDebt: Double,
@@ -287,6 +361,140 @@ class FirestoreService {
         val totalMonthlyPayment: Double,
         val debtCount: Int
     )
+    
+    // Debt Methods
+    suspend fun saveDebtToFirestore(debt: Debt): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val documentRef = debtsCollection.document(debt.id)
+            documentRef.set(debt).await()
+            Result.success(documentRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateDebtInFirestore(debt: Debt): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            debtsCollection.document(debt.id)
+                .set(debt)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteDebtFromFirestore(debtId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            debtsCollection.document(debtId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getDebtById(debtId: String): Result<Debt> = withContext(Dispatchers.IO) {
+        try {
+            val doc = debtsCollection.document(debtId).get().await()
+            val debt = doc.toObject(Debt::class.java)
+            
+            if (debt != null) {
+                Result.success(debt)
+            } else {
+                Result.failure(NoSuchElementException("Debt not found"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeDebts(userId: String): Flow<List<Debt>> = callbackFlow {
+        val subscription = debtsCollection
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val debts = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Debt::class.java)
+                    }
+                    trySend(debts)
+                }
+            }
+            
+        awaitClose { subscription.remove() }
+    }
+
+    // Net Worth Methods
+    suspend fun saveNetWorthEntryToFirestore(entry: NetWorthEntry): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val documentRef = netWorthCollection.document(entry.id)
+            documentRef.set(entry).await()
+            Result.success(documentRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateNetWorthEntryInFirestore(entry: NetWorthEntry): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            netWorthCollection.document(entry.id)
+                .set(entry)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteNetWorthEntryFromFirestore(entryId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            netWorthCollection.document(entryId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getNetWorthEntryById(entryId: String): Result<NetWorthEntry> = withContext(Dispatchers.IO) {
+        try {
+            val doc = netWorthCollection.document(entryId).get().await()
+            val entry = doc.toObject(NetWorthEntry::class.java)
+            
+            if (entry != null) {
+                Result.success(entry)
+            } else {
+                Result.failure(NoSuchElementException("NetWorth entry not found"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeNetWorthEntries(userId: String): Flow<List<NetWorthEntry>> = callbackFlow {
+        val subscription = netWorthCollection
+            .whereEqualTo("userId", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val entries = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(NetWorthEntry::class.java)
+                    }
+                    trySend(entries)
+                }
+            }
+            
+        awaitClose { subscription.remove() }
+    }
     
     companion object {
         @Volatile

@@ -59,6 +59,10 @@ import com.google.firebase.firestore.QuerySnapshot // Add for Firestore results
 import kotlinx.coroutines.launch // Add for Coroutines
 import kotlinx.coroutines.tasks.await // Add for Coroutines + Tasks API
 import java.util.* // Add for Calendar
+import com.example.notbroke.repositories.RepositoryFactory
+import com.example.notbroke.repositories.TransactionRepository
+import com.example.notbroke.services.FirestoreService
+import com.example.notbroke.services.AuthService
 
 // *** MODIFIED: Implement TransactionAdapter.OnItemClickListener ***
 class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
@@ -76,6 +80,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private lateinit var balanceTextView: TextView
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
+    private lateinit var addCategoryButton: MaterialButton
 
     // ===== Keep existing Receipt image handling =====
     private var currentPhotoPath: String? = null
@@ -85,9 +90,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private var currentDialog: Dialog? = null
 
-    // ===== Add Firebase instances =====
-    private lateinit var db: FirebaseFirestore
-    private lateinit var auth: FirebaseAuth
+    // ===== Replace Firebase instances with Repository =====
+    private lateinit var repositoryFactory: RepositoryFactory
+    private val transactionRepository by lazy { 
+        TransactionRepository(
+            repositoryFactory.database.transactionDao(),
+            FirestoreService.getInstance()
+        )
+    }
+    private val authService = AuthService.getInstance()
 
     // Store the current date range for navigation
     private var currentStartDate: Long = 0L
@@ -95,17 +106,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initializeActivityResultLaunchers() // Keep this
-        // Initialize Firebase
-        try {
-            db = FirebaseFirestore.getInstance()
-            auth = FirebaseAuth.getInstance()
-            Log.d(TAG, "onCreate: Initialized Firebase Auth and Firestore")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Firebase", e)
-            showToast("Failed to initialize core services. Please restart the app.")
-            // Consider preventing fragment load if Firebase fails
-        }
+        initializeActivityResultLaunchers() 
+        // Initialize Repository Factory
+        repositoryFactory = RepositoryFactory.getInstance(requireContext())
     }
 
     override fun onCreateView(
@@ -114,12 +117,12 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         savedInstanceState: Bundle?
     ): View? {
         Log.d(TAG, "onCreateView: Inflating dashboard fragment layout")
-        // Use try-catch for layout inflation
+        
         return try {
             inflater.inflate(R.layout.fragment_dashboard, container, false)
         } catch (e: Exception) {
             Log.e(TAG, "Error inflating layout R.layout.fragment_dashboard", e)
-            // Optionally return a simple error view
+            
             null
         }
     }
@@ -130,14 +133,17 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
         try {
             initializeViews(view)
-            setupButtonListeners() // Renamed from setupFabListeners
+            setupButtonListeners() 
             setupTransactionsRecyclerView()
-            transactionAdapter.setOnItemClickListener(this) // *** ADDED: Set the click listener ***
+            transactionAdapter.setOnItemClickListener(this) 
 
-            // Setup budget components - Chart and Spinner setup remains
+            
             setupPieChart()
             setupChartListener()
-            setupPeriodSpinner() // This will now trigger the initial data load via its listener
+            setupPeriodSpinner() 
+
+            // Replace loadTransactions() call with observeTransactions()
+            observeTransactions()
 
             Log.d(TAG, "onViewCreated: Setup complete.")
 
@@ -162,6 +168,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             balanceTextView = view.findViewById(R.id.balanceTextView)
             balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
             balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
+            addCategoryButton = view.findViewById(R.id.addCategoryButton)
             Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing views", e)
@@ -382,6 +389,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
         }
+        addCategoryButton.setOnClickListener {
+            showAddCategoryDialog()
+        }
     }
 
 
@@ -453,7 +463,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             Log.d(TAG, "Add Transaction Dialog: Add button clicked.")
             val amountStr = amountEditText.text.toString().trim()
             val description = descriptionEditText.text.toString().trim()
+            val category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
             val date = System.currentTimeMillis()
+
 
             // Validation
             if (amountStr.isBlank() || description.isBlank()) {
@@ -483,7 +495,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             )
 
             Log.d(TAG, "Attempting to save transaction: $transaction")
-            saveTransactionToFirestore(transaction) // Save to Firestore
+            addTransaction(transaction) // Save to Firestore
 
             dialog.dismiss()
             currentDialog = null
@@ -580,7 +592,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         deleteButton.setOnClickListener {
             Log.d(TAG, "Edit Transaction Dialog: Delete clicked for ID: ${transaction.firestoreId}")
             // *** ADDED: Implement Delete functionality ***
-            deleteTransactionFromFirestore(transaction.firestoreId)
+            deleteTransaction(transaction)
             dialog.dismiss()
             currentDialog = null
         }
@@ -617,7 +629,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             )
 
             // *** ADDED: Call function to update in Firestore ***
-            updateTransactionInFirestore(updatedTransaction)
+            updateTransaction(updatedTransaction)
 
             dialog.dismiss()
             currentDialog = null
@@ -734,11 +746,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             }
         }
     }
-
-    // *** ADDED: Helper function to load bitmap into a specific ImageView ***
+    
     private fun loadBitmapIntoImageView(uri: Uri?, imageView: ImageView?) {
         if (uri == null || imageView == null) return
-        // Use context safely
         context?.let { ctx ->
             try {
                 ctx.contentResolver.openInputStream(uri)?.use { inputStream ->
@@ -750,13 +760,12 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading bitmap from URI: $uri", e)
                 showToast("Failed to load image preview")
-                imageView.setImageResource(android.R.drawable.ic_menu_gallery) // Reset preview on error
+                imageView.setImageResource(android.R.drawable.ic_menu_gallery) 
             }
         } ?: Log.w(TAG, "loadBitmapIntoImageView: Context is null.")
     }
 
     private fun checkCameraPermission(): Boolean {
-        // Use context safely
         return context?.let { ctx ->
             if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                 true
@@ -767,17 +776,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             }
         } ?: run {
             Log.w(TAG, "checkCameraPermission: Context is null, cannot check permission.")
-            false // Cannot proceed without context
+            false 
         }
     }
 
 
     private fun dispatchTakePictureIntent() {
         Log.d(TAG, "dispatchTakePictureIntent: Attempting to launch camera.")
-        // Use context safely
         context?.let { ctx ->
             Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-                // Ensure the intent can be resolved
                 if (takePictureIntent.resolveActivity(ctx.packageManager) == null) {
                     Log.e(TAG, "No camera app found to handle intent.")
                     showToast("No camera application found")
@@ -788,12 +795,11 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                     val photoFile: File = createImageFile()
                     val photoURI: Uri = FileProvider.getUriForFile(
                         ctx,
-                        "com.example.notbroke.fileprovider", // Ensure this matches AndroidManifest provider authority
+                        "com.example.notbroke.fileprovider", 
                         photoFile
                     )
-                    currentPhotoPath = photoFile.absolutePath // Store path *after* successful file creation
+                    currentPhotoPath = photoFile.absolutePath 
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                    // Grant temporary write permission to the camera app
                     takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     Log.d(TAG, "Launching camera intent with output URI: $photoURI and path: $currentPhotoPath")
                     takePictureLauncher.launch(takePictureIntent)
@@ -818,22 +824,20 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     @Throws(IOException::class)
     private fun createImageFile(): File {
-        // Use context safely
         val context = requireContext() ?: throw IOException("Context is unavailable")
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.UK).format(Date())
         val storageDir: File? = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
 
-        if (storageDir == null) { // Check if storageDir itself is null
+        if (storageDir == null) { 
             Log.e(TAG, "External picture directory is null.")
             throw IOException("Cannot access picture storage directory")
         }
-        if (!storageDir.exists() && !storageDir.mkdirs()) { // Check if exists OR can be created
+        if (!storageDir.exists() && !storageDir.mkdirs()) { 
             Log.e(TAG, "External picture directory does not exist and could not be created.")
             throw IOException("Cannot create picture storage directory")
         }
 
         Log.d(TAG, "Creating image file in: ${storageDir.absolutePath}")
-        // Create the file
         return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
     }
 
@@ -841,7 +845,6 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private fun openGallery() {
         Log.d(TAG, "openGallery: Launching gallery picker intent.")
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        // Consider adding type filtering if needed: intent.type = "image/*"
         pickImageLauncher.launch(intent)
     }
 
@@ -849,250 +852,68 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     //              Firestore & Data Handling Methods
     // ==========================================================
 
-    private fun saveTransactionToFirestore(transaction: Transaction) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "saveTransactionToFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
+    private fun addTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.saveTransaction(transaction)
+                Toast.makeText(context, "Transaction added successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
-        Log.d(TAG, "saveTransactionToFirestore: Saving transaction for user $userId")
-
-        // Using Server Timestamp is generally recommended for consistency
-        val transactionData = mapOf(
-            "amount" to transaction.amount,
-            "type" to transaction.type.name,
-            "description" to transaction.description,
-            "category" to transaction.category,
-            // "date" to transaction.date, // Keep local if offline support is complex
-            "date" to com.google.firebase.firestore.FieldValue.serverTimestamp(), // Use server time
-            "receiptImageUri" to transaction.receiptImageUri // Store as String or null
-        )
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .add(transactionData) // Let Firestore generate the ID
-            .addOnSuccessListener { documentReference ->
-                Log.i(TAG, "saveTransactionToFirestore: Success! Document ID: ${documentReference.id}")
-                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} added")
-                // Refresh data for the currently selected period
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "saveTransactionToFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "saveTransactionToFirestore: Error adding transaction", e)
-                showToast("Error saving transaction: ${e.localizedMessage}")
-            }
     }
 
-    // *** ADDED: Function to update a transaction in Firestore ***
-    private fun updateTransactionInFirestore(transaction: Transaction) {
-        val userId = auth.currentUser?.uid
-        val transactionId = transaction.firestoreId
-
-        if (userId == null) {
-            Log.w(TAG, "updateTransactionInFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
-        }
-        if (transactionId == null) {
-            Log.e(TAG, "updateTransactionInFirestore: Transaction Firestore ID is null. Cannot update.")
-            showToast("Error: Cannot update transaction (missing ID)")
-            return
-        }
-        Log.d(TAG, "updateTransactionInFirestore: Updating transaction $transactionId for user $userId")
-
-        val updatedData = mapOf(
-            "amount" to transaction.amount,
-            "description" to transaction.description,
-            "category" to transaction.category
-            // Receipt image URI can be updated here if needed
-        )
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .document(transactionId) // Reference the specific document by ID
-            .update(updatedData)
-            .addOnSuccessListener {
-                Log.i(TAG, "updateTransactionInFirestore: Success! Document $transactionId updated.")
-                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} updated")
-                // Refresh data for the currently selected period
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "updateTransactionInFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
+    private fun updateTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.updateTransaction(transaction)
+                Toast.makeText(context, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "updateTransactionInFirestore: Error updating transaction $transactionId", e)
-                showToast("Error updating transaction: ${e.localizedMessage}")
-            }
+        }
     }
 
-    // *** ADDED: Function to delete a transaction from Firestore ***
-    private fun deleteTransactionFromFirestore(transactionId: String?) {
-        val userId = auth.currentUser?.uid
-
-        if (userId == null) {
-            Log.w(TAG, "deleteTransactionFromFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
-        }
-        if (transactionId == null) {
-            Log.e(TAG, "deleteTransactionFromFirestore: Transaction Firestore ID is null. Cannot delete.")
-            showToast("Error: Cannot delete transaction (missing ID)")
-            return
-        }
-        Log.d(TAG, "deleteTransactionFromFirestore: Deleting transaction $transactionId for user $userId")
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .document(transactionId) // Reference the specific document by ID
-            .delete()
-            .addOnSuccessListener {
-                Log.i(TAG, "deleteTransactionFromFirestore: Success! Document $transactionId deleted.")
-                showToast("Transaction deleted")
-                // Refresh data for the currently selected period
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "deleteTransactionFromFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
+    private fun deleteTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.deleteTransaction(transaction)
+                Toast.makeText(context, "Transaction deleted successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "deleteTransactionFromFirestore: Error deleting transaction $transactionId", e)
-                showToast("Error deleting transaction: ${e.localizedMessage}")
-            }
+        }
     }
-
 
     private fun loadTransactionsForPeriod(period: String) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "loadTransactionsForPeriod: User not logged in.")
-            clearUiData()
-            return
-        }
-
-        val (startDate, endDate) = getDateRangeForPeriod(period)
-        if (startDate == null || endDate == null) {
-            Log.e(TAG, "loadTransactionsForPeriod: Invalid date range for period '$period'. Cannot load.")
-            clearUiData()
-            return
-        }
-
-        Log.i(TAG, "loadTransactionsForPeriod: Loading for '$period' (User: $userId, Start: ${Date(startDate)}, End: ${Date(endDate)})")
-        // Show loading indicator?
-
-        viewLifecycleOwner.lifecycleScope.launch { // Use lifecycleScope
-            try {
-                // Convert Long dates to Firestore Timestamp for querying
-                val startTimestamp = com.google.firebase.Timestamp(startDate / 1000, (startDate % 1000 * 1000000).toInt())
-                val endTimestamp = com.google.firebase.Timestamp(endDate / 1000, (endDate % 1000 * 1000000).toInt())
-
-                val querySnapshot = db.collection("users").document(userId)
-                    .collection("transactions")
-                    .whereGreaterThanOrEqualTo("date", startTimestamp) // Query with Timestamp
-                    .whereLessThanOrEqualTo("date", endTimestamp)     // Query with Timestamp
-                    // Keep ordering by date on client side for flexibility
-                    .get()
-                    .await() // Use await() for cleaner async handling
-
-                Log.d(TAG, "loadTransactionsForPeriod: Firestore fetch successful, ${querySnapshot.size()} documents.")
-                processFirestoreResults(querySnapshot)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "loadTransactionsForPeriod: Error fetching from Firestore", e)
-                showToast("Error loading transactions: ${e.localizedMessage}")
-                clearUiData()
-            } finally {
-                // Hide loading indicator
+        val userId = authService.getCurrentUserId() ?: return
+        
+        lifecycleScope.launch {
+            transactionRepository.allTransactions.collectLatest { transactions ->
+                // Filter transactions by date range if needed
+                val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactions.filter { 
+                        it.date in currentStartDate..currentEndDate 
+                    }
+                } else {
+                    transactions
+                }
+                
+                // Update adapter with filtered transactions
+                transactionAdapter.submitList(filteredTransactions)
+                
+                // Update UI with transaction data
+                updateTransactionSummary(filteredTransactions)
+                updatePieChart(filteredTransactions)
             }
         }
     }
 
-    private fun processFirestoreResults(snapshot: QuerySnapshot) {
-        Log.d(TAG, "processFirestoreResults: Processing ${snapshot.size()} documents.")
-        val transactions = snapshot.documents.mapNotNull { doc ->
-            try {
-                val data = doc.data ?: return@mapNotNull null // Skip if data is null
-
-                val typeString = data["type"] as? String
-                val transactionType = try {
-                    if (typeString != null) Transaction.Type.valueOf(typeString) else Transaction.Type.EXPENSE
-                } catch (e: IllegalArgumentException) {
-                    Log.w(TAG, "Invalid type '$typeString' in doc ${doc.id}, defaulting to EXPENSE.")
-                    Transaction.Type.EXPENSE
-                }
-
-                // Handle Firestore Timestamp for date
-                val firestoreTimestamp = data["date"] as? com.google.firebase.Timestamp
-                val dateMillis = firestoreTimestamp?.toDate()?.time ?: run {
-                    // Fallback if date is stored as Long (should be avoided)
-                    Log.w(TAG,"Date field in doc ${doc.id} is not a Timestamp, trying Long.")
-                    (data["date"] as? Long) ?: 0L
-                }
-                if (dateMillis == 0L) {
-                    Log.w(TAG,"Could not parse date for doc ${doc.id}, skipping.")
-                    return@mapNotNull null // Skip if date is invalid
-                }
-
-                Transaction(
-                    id = doc.id.hashCode().toLong(), // Local ID (can keep or remove if not used elsewhere)
-                    firestoreId = doc.id, // *** ADDED: Store Firestore ID ***
-                    type = transactionType,
-                    amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
-                    description = data["description"] as? String ?: "",
-                    category = data["category"] as? String ?: "Uncategorized",
-                    date = dateMillis, // Use parsed milliseconds
-                    receiptImageUri = data["receiptImageUri"] as? String // Nullable
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error mapping document ${doc.id}", e)
-                null // Skip documents that fail mapping
-            }
-        }.sortedByDescending { it.date } // Sort by date descending
-
-        Log.i(TAG, "processFirestoreResults: Mapped ${transactions.size} transactions successfully.")
-
-        // Update UI on the main thread safely
-        activity?.runOnUiThread {
-            if (!isAdded) {
-                Log.w(TAG, "processFirestoreResults: Fragment not attached, skipping UI update.")
-                return@runOnUiThread
-            }
-
-            Log.d(TAG, "Updating UI: RecyclerView, Balance, PieChart")
-            transactionAdapter.setTransactions(transactions)
-            updateBalance(transactions)
-
-            val expenseTransactions = transactions.filter { it.type == Transaction.Type.EXPENSE }
-            val expenseCategoryTotals = calculateCategoryTotals(expenseTransactions)
-            updatePieChart(expenseCategoryTotals)
-
-            // Update Budget Summary Texts (Placeholders)
-            val totalSpent = expenseCategoryTotals.values.sum()
-            totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
-            totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
-            remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
-
-            Log.d(TAG, "UI Update complete.")
-        }
-    }
-
-
-    private fun calculateCategoryTotals(expenseTransactions: List<Transaction>): Map<String, Double> {
-        Log.d(TAG, "calculateCategoryTotals: Calculating for ${expenseTransactions.size} expenses.")
-        if (expenseTransactions.isEmpty()) return emptyMap()
-
-        // Group by category, sum amounts, filter zero totals, and sort
-        val totals = expenseTransactions
-            .groupBy { it.category.trim().ifBlank { "Uncategorized" } } // Trim and handle blank categories
-            .mapValues { (_, transactionsInCategory) ->
-                transactionsInCategory.sumOf { it.amount }
-            }
-            .filterValues { it > 0 } // Only include categories with spending > 0
-            .toSortedMap() // Sort categories alphabetically
-
-        Log.d(TAG, "calculateCategoryTotals: Calculated totals for ${totals.size} categories.")
-        return totals
+    private fun updateTransactionSummary(transactions: List<Transaction>) {
+        updateBalance(transactions)
+        totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", transactions.sumOf { it.amount })
+        totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
+        remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
     }
 
     private fun getDateRangeForPeriod(period: String): Pair<Long?, Long?> {
@@ -1213,12 +1034,36 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         // Use runOnUiThread safely checking fragment attachment
         activity?.runOnUiThread {
             if (!isAdded) return@runOnUiThread
-            transactionAdapter.setTransactions(emptyList())
+            transactionAdapter.submitList(emptyList())
             updatePieChart(emptyMap()) // This will handle clearing the chart
             updateBalance(emptyList())
             totalSpentTextView.text = "R 0.00"
             totalBudgetTextView.text = "R ----.--"
             remainingTextView.text = "R ----.--"
+        }
+    }
+
+    private fun observeTransactions() {
+        val userId = authService.getCurrentUserId() ?: return
+        
+        lifecycleScope.launch {
+            transactionRepository.allTransactions.collectLatest { transactions ->
+                // Filter transactions by date range if needed
+                val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactions.filter { 
+                        it.date in currentStartDate..currentEndDate 
+                    }
+                } else {
+                    transactions
+                }
+                
+                // Update adapter with filtered transactions
+                transactionAdapter.submitList(filteredTransactions)
+                
+                // Update UI with transaction data
+                updateTransactionSummary(filteredTransactions)
+                updatePieChart(filteredTransactions)
+            }
         }
     }
 

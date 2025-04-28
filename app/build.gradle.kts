@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android") version "1.9.22"
     alias(libs.plugins.google.gms.google.services)
+    kotlin("kapt")
 }
 
 android {
@@ -66,6 +67,15 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     
+    // Room dependencies with updated versions
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
+    
+    // Kotlin metadata dependency
+    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
+    
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
 
@@ -90,16 +100,16 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
 
-    // Coroutines for asynchronous operations (like Firestore calls)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3") // Or latest stable
+    // Coroutines for asynchronous operations 
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3") 
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0") // For lifecycleScope
 
-    // MPAndroidChart (ensure this matches the version you are using)
+    // MPAndroidChart
     implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
-    // Activity Result API (usually included with fragment-ktx or appcompat)
-    implementation("androidx.activity:activity-ktx:1.9.0") // Or latest
-    implementation("androidx.fragment:fragment-ktx:1.7.1") // Or latest
+    // Activity Result API 
+    implementation("androidx.activity:activity-ktx:1.9.0") 
+    implementation("androidx.fragment:fragment-ktx:1.7.1") 
 }
 
 // Configure tasks to handle incremental builds properly

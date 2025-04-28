@@ -28,7 +28,7 @@ import com.github.mikephil.charting.formatter.PercentFormatter
  * Fragment that displays budget information and categories
  */
 class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener {
-    
+
     private val TAG = "BudgetFragment"
     private lateinit var budgetRecyclerView: RecyclerView
     private lateinit var budgetAdapter: BudgetCategoryAdapter
@@ -44,10 +44,10 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
         savedInstanceState: Bundle?
     ): View {
         Log.d(TAG, "onCreateView: Creating BudgetFragment")
-        
+
         // Inflate the layout
         val view = inflater.inflate(R.layout.fragment_budget, container, false)
-        
+
         try {
             // Initialize views
             budgetRecyclerView = view.findViewById(R.id.budgetRecyclerView)
@@ -56,28 +56,28 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
             remainingTextView = view.findViewById(R.id.remainingTextView)
             periodSpinner = view.findViewById(R.id.periodSpinner)
             pieChart = view.findViewById(R.id.pieChart)
-            
+
             // Setup period spinner
             setupPeriodSpinner()
-            
+
             // Setup RecyclerView
             setupRecyclerView()
-            
+
             // Setup PieChart
             setupPieChart()
-            
+
             // Load budget data
             loadBudgetData()
-            
+
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up BudgetFragment", e)
             showSimplifiedView(view)
         }
-        
+
         Log.d(TAG, "onCreateView: BudgetFragment created successfully")
         return view
     }
-    
+
     private fun setupPieChart() {
         pieChart.apply {
             description.isEnabled = false
@@ -101,10 +101,10 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
             setEntryLabelTextSize(12f)
         }
     }
-    
+
     private fun setupPeriodSpinner() {
         val periods = arrayOf("This Month", "Last Month", "This Year", "Custom")
-        
+
         // Create adapter with white text color
         val adapter = object : ArrayAdapter<String>(
             requireContext(),
@@ -116,69 +116,69 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
                 (view as? TextView)?.setTextColor(Color.WHITE)
                 return view
             }
-            
+
             override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getDropDownView(position, convertView, parent)
                 (view as? TextView)?.setTextColor(Color.WHITE)
                 return view
             }
         }
-        
+
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         periodSpinner.adapter = adapter
     }
-    
+
     private fun setupRecyclerView() {
         // Create empty adapter first
         budgetAdapter = BudgetCategoryAdapter(emptyList(), this)
-        
+
         // Setup RecyclerView
         budgetRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = budgetAdapter
         }
-        
+
         Log.d(TAG, "RecyclerView setup complete")
     }
-    
+
     private fun loadBudgetData() {
         try {
             // Get sample budget categories from TestData
             val budgetCategories = TestData.getSampleBudgetCategories()
-            
+
             // Calculate totals
             var totalBudget = 0.0
             var totalSpent = 0.0
-            
+
             for (category in budgetCategories) {
                 totalBudget += category.budgetAmount
                 totalSpent += category.spentAmount
             }
-            
+
             val remaining = totalBudget - totalSpent
-            
+
             // Update UI
             totalBudgetTextView.text = "R%.2f".format(totalBudget)
             totalSpentTextView.text = "R%.2f".format(totalSpent)
             remainingTextView.text = "R%.2f".format(remaining)
-            
+
             // Update pie chart
             updatePieChart(budgetCategories)
-            
+
             // Set categories to adapter
             budgetAdapter = BudgetCategoryAdapter(budgetCategories, this)
             budgetRecyclerView.adapter = budgetAdapter
-            
+
             Log.d(TAG, "Loaded ${budgetCategories.size} budget categories")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading budget data", e)
         }
     }
-    
+
     private fun updatePieChart(categories: List<BudgetCategory>) {
         val entries = ArrayList<PieEntry>()
         val colors = ArrayList<Int>()
-        
+
         // Add entries for each category
         categories.forEach { category ->
             if (category.spentAmount > 0) {
@@ -195,7 +195,7 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
                 })
             }
         }
-        
+
         val dataSet = PieDataSet(entries, "Spending Categories")
         dataSet.apply {
             this.colors = colors
@@ -203,12 +203,12 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
             valueTextColor = Color.WHITE
             valueFormatter = PercentFormatter(pieChart)
         }
-        
+
         val data = PieData(dataSet)
         pieChart.data = data
         pieChart.invalidate() // refresh
     }
-    
+
     override fun onEditBudget(category: BudgetCategory) {
         Log.d(TAG, "Edit budget requested for category: ${category.name}")
         // Will implement edit functionality later
@@ -219,7 +219,7 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
             android.widget.Toast.LENGTH_SHORT
         ).show()
     }
-    
+
     private fun showSimplifiedView(rootView: View) {
         // If we encounter an error, show a simplified view
         try {
@@ -229,20 +229,20 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
                     rootView.getChildAt(i).visibility = View.GONE
                 }
             }
-            
+
             // Create a simple message view
             val messageView = TextView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.MATCH_PARENT
                 )
-                
+
                 text = "Budget Feature\nCould not load properly\nTry again later"
                 textSize = 24f
                 gravity = Gravity.CENTER
                 setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
             }
-            
+
             // Add message view to root
             if (rootView is ViewGroup) {
                 rootView.addView(messageView)
@@ -251,12 +251,12 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
             Log.e(TAG, "Error showing simplified view", e)
         }
     }
-    
+
     override fun onDestroyView() {
         Log.d(TAG, "onDestroyView: Cleaning up BudgetFragment")
         super.onDestroyView()
     }
-    
+
     // BudgetCategory data class
     data class BudgetCategory(
         val name: String,
@@ -266,4 +266,4 @@ class BudgetFragment : Fragment(), BudgetCategoryAdapter.BudgetCategoryListener 
         val percentUsed: Double
             get() = if (budgetAmount > 0) (spentAmount / budgetAmount) * 100 else 0.0
     }
-} 
+}
