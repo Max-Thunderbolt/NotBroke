@@ -75,6 +75,7 @@
             android:inputType="none"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+
     <!-- Receipt Image Upload Section -->
     <LinearLayout
         android:layout_width="match_parent"

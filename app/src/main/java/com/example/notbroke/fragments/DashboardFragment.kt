@@ -53,6 +53,8 @@ import android.widget.ImageView // Keep for image preview
 import android.widget.AdapterView // Add for Spinner listener
 import android.widget.AutoCompleteTextView
 import android.widget.EditText // Import EditText directly
+import android.widget.RadioGroup
+import com.google.android.material.textfield.TextInputEditText
 
 // ===== Add necessary new imports =====
 import androidx.lifecycle.lifecycleScope // Add for Coroutines
@@ -86,6 +88,7 @@ class DashboardFragment : Fragment() {
     private lateinit var balanceTextView: TextView
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
+    private lateinit var addCategoryButton: MaterialButton
 
     // ===== Keep existing Receipt image handling =====
     private var currentPhotoPath: String? = null
@@ -171,6 +174,7 @@ class DashboardFragment : Fragment() {
             balanceTextView = view.findViewById(R.id.balanceTextView)
             balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
             balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
+            addCategoryButton = view.findViewById(R.id.addCategoryButton)
             Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing views", e)
@@ -390,6 +394,9 @@ class DashboardFragment : Fragment() {
             Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
         }
+        addCategoryButton.setOnClickListener {
+            showAddCategoryDialog()
+        }
     }
 
 
@@ -423,13 +430,14 @@ class DashboardFragment : Fragment() {
         val amountEditText = dialog.findViewById<EditText>(R.id.amountEditText) // Changed to EditText
         val descriptionEditText = dialog.findViewById<EditText>(R.id.descriptionEditText) // Changed to EditText
         val categoryInputLayout = dialog.findViewById<View>(R.id.categoryInputLayout) // Get the Layout container for category
+        val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete) // Get the AutoCompleteTextView
         val takePictureButton = dialog.findViewById<Button>(R.id.takePictureButton)
         val chooseImageButton = dialog.findViewById<Button>(R.id.chooseImageButton)
         val receiptImageView = dialog.findViewById<ImageView>(R.id.receiptImagePreview)
         val cancelButton = dialog.findViewById<Button>(R.id.cancelButton)
         val addButton = dialog.findViewById<Button>(R.id.addButton)
 
-        if (amountEditText == null || descriptionEditText == null || categoryInputLayout == null || addButton == null || cancelButton == null || titleTextView == null) {
+        if (amountEditText == null || descriptionEditText == null ||addButton == null || cancelButton == null || titleTextView == null) {
             Log.e(TAG, "showTransactionDialog: Could not find essential views. Aborting.")
             showToast("Error displaying dialog.")
             dialog.dismiss()
@@ -445,24 +453,48 @@ class DashboardFragment : Fragment() {
         titleTextView.text = if (type == Transaction.Type.INCOME) "Add Income" else "Add Expense"
         addButton.text = if (type == Transaction.Type.INCOME) "ADD INCOME" else "ADD EXPENSE"
 
-        // **MODIFICATION**: Hide category input for expenses
-        if (type == Transaction.Type.EXPENSE) {
-            categoryInputLayout.visibility = View.GONE
-            Log.d(TAG, "Dialog Type: EXPENSE - Hiding category input.")
-        } else {
-            categoryInputLayout.visibility = View.VISIBLE
-            Log.d(TAG, "Dialog Type: INCOME - Showing category input.")
-            // Setup Category Adapter for INCOME only
-            // (Assuming R.id.categoryAutoComplete is inside R.id.categoryInputLayout)
-            val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
-            categoryAutoComplete?.let { // Ensure AutoCompleteTextView exists if layout is visible
-                val categories = CategorizationUtils.incomeCategories // Use specific income categories
-                val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, categories)
-                it.setAdapter(categoryAdapter)
-                it.threshold = 1
-                Log.d(TAG, "Category adapter set for INCOME with ${categories.size} categories.")
-            } ?: Log.w(TAG, "Category AutoCompleteTextView not found, even though layout is visible for INCOME.")
-        }
+//        // **MODIFICATION**: Hide category input for expenses
+//        if (type == Transaction.Type.EXPENSE) {
+//            categoryInputLayout.visibility = View.GONE
+//            Log.d(TAG, "Dialog Type: EXPENSE - Hiding category input.")
+//        } else {
+//            categoryInputLayout.visibility = View.VISIBLE
+//            Log.d(TAG, "Dialog Type: INCOME - Showing category input.")
+//            // Setup Category Adapter for INCOME only
+//            // (Assuming R.id.categoryAutoComplete is inside R.id.categoryInputLayout)
+//            val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+//            categoryAutoComplete?.let { // Ensure AutoCompleteTextView exists if layout is visible
+//                val categories = CategorizationUtils.incomeCategories // Use specific income categories
+//                val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, categories)
+//                it.setAdapter(categoryAdapter)
+//                it.threshold = 1
+//                Log.d(TAG, "Category adapter set for INCOME with ${categories.size} categories.")
+//            } ?: Log.w(TAG, "Category AutoCompleteTextView not found, even though layout is visible for INCOME.")
+//        }Replaced by code underneath temp
+        // Load categories from Firestore
+        val categoryType = if (type == Transaction.Type.INCOME) "income" else "expense"
+        db.collection("categories")
+            .whereEqualTo("type", categoryType)
+            .whereEqualTo("userId", auth.currentUser?.uid)
+            .get()
+            .addOnSuccessListener { documents ->
+                val categories = documents.map { it.getString("name") ?: "" }
+                if (categories.isNotEmpty()) {
+                    categoryInputLayout.visibility = View.VISIBLE
+                    val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, categories)
+                    categoryAutoComplete?.setAdapter(categoryAdapter)
+                    categoryAutoComplete?.threshold = 1
+                    Log.d(TAG, "Loaded ${categories.size} categories for $categoryType")
+                } else {
+                    categoryInputLayout.visibility = View.GONE
+                    Log.d(TAG, "No categories found for $categoryType")
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error loading categories", e)
+                categoryInputLayout.visibility = View.GONE
+            }
+        //end off replce code for modification
 
 
         // Keep image button listeners
@@ -479,7 +511,9 @@ class DashboardFragment : Fragment() {
             Log.d(TAG, "Add Transaction Dialog: Add button clicked.")
             val amountStr = amountEditText.text.toString().trim()
             val description = descriptionEditText.text.toString().trim()
+            val category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
             val date = System.currentTimeMillis()
+
 
             // Validation
             if (amountStr.isBlank() || description.isBlank()) {
@@ -492,47 +526,115 @@ class DashboardFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            // **MODIFICATION**: Determine Category
-            val category: String
-            if (type == Transaction.Type.INCOME) {
-                // Get category from dropdown for income
-                val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
-                category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
-                if (category.isBlank() || !CategorizationUtils.incomeCategories.contains(category)) {
-                    showToast("Please select a valid income category")
-                    return@setOnClickListener
-                }
-                Log.d(TAG,"Income category selected: $category")
-            } else {
-                // Suggest category automatically for expense
-                category = CategorizationUtils.suggestCategory(description) ?: "Other" // Default to "Other" if no suggestion
-                Log.d(TAG,"Expense category suggested: $category for description: '$description'")
-            }
-
-            val transaction = Transaction(
-                id = date, // Temporary local ID
-                type = type,
-                amount = amount,
-                description = description,
-                category = category, // Use determined category
-                date = date,
-                receiptImageUri = selectedImageUri?.toString() // Keep image URI
+//            // **MODIFICATION**: Determine Category
+//            val category: String
+//            if (type == Transaction.Type.INCOME) {
+//                // Get category from dropdown for income
+//                val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+//                category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
+//                if (category.isBlank() || !CategorizationUtils.incomeCategories.contains(category)) {
+//                    showToast("Please select a valid income category")
+//                    return@setOnClickListener
+//                }
+//                Log.d(TAG,"Income category selected: $category")
+//            } else {
+//                // Suggest category automatically for expense
+//                category = CategorizationUtils.suggestCategory(description) ?: "Other" // Default to "Other" if no suggestion
+//                Log.d(TAG,"Expense category suggested: $category for description: '$description'")
+//            }
+//
+//            val transaction = Transaction(
+//                id = date, // Temporary local ID
+//                type = type,
+//                amount = amount,
+//                description = description,
+//                category = category, // Use determined category
+//                date = date,
+//                receiptImageUri = selectedImageUri?.toString() // Keep image URI
+//            )
+//
+//            Log.d(TAG, "Attempting to save transaction: $transaction")
+//            saveTransactionToFirestore(transaction) // Save to Firestore
+//
+//            dialog.dismiss()
+//            currentDialog = null
+//        }
+//
+//        dialog.setOnDismissListener {
+//            Log.d(TAG, "Add Transaction Dialog dismissed.")
+//            currentDialog = null --Temp replacement--
+            // Create transaction object
+            val transaction = hashMapOf(
+                "amount" to amount,
+                "description" to description,
+                "category" to category,
+                "type" to type.name.toLowerCase(),
+                "date" to date,
+                "userId" to auth.currentUser?.uid,
+                "imageUrl" to selectedImageUri?.toString()
             )
-
-            Log.d(TAG, "Attempting to save transaction: $transaction")
-            saveTransactionToFirestore(transaction) // Save to Firestore
-
-            dialog.dismiss()
-            currentDialog = null
-        }
-
-        dialog.setOnDismissListener {
-            Log.d(TAG, "Add Transaction Dialog dismissed.")
-            currentDialog = null
+            // Save to Firestore
+            db.collection("transactions")
+                .add(transaction)
+                .addOnSuccessListener {
+                    showToast("Transaction added successfully")
+                    dialog.dismiss()
+                    currentDialog = null
+                    loadTransactionsForPeriod(periodSpinner.selectedItem.toString())
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error adding transaction", e)
+                    showToast("Failed to add transaction")
+                }
         }
 
         dialog.show()
         Log.d(TAG, "showTransactionDialog: Dialog shown.")
+    }
+    private fun showAddCategoryDialog() {
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_add_category)
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val categoryNameInput = dialog.findViewById<TextInputEditText>(R.id.categoryNameInput)
+        val categoryTypeGroup = dialog.findViewById<RadioGroup>(R.id.categoryTypeGroup)
+        val addButton = dialog.findViewById<Button>(R.id.addCategoryButton)
+        val cancelButton = dialog.findViewById<Button>(R.id.cancelCategoryButton)
+
+        addButton.setOnClickListener{
+            val categoryName = categoryNameInput.text.toString().trim()
+            if (categoryName.isEmpty()) {
+                categoryNameInput.error = "Category name is required"
+                return@setOnClickListener
+            }
+            val isIncome = categoryTypeGroup.checkedRadioButtonId == R.id.incomeRadioButton
+
+            val categoryType = if (isIncome) "income" else "expense"
+
+            // Save category to Firestore
+            val category = hashMapOf(
+                "name" to categoryName,
+                "type" to categoryType,
+                "userId" to auth.currentUser?.uid
+            )
+
+            db.collection("categories")
+                .add(category)
+                .addOnSuccessListener {
+                    showToast("Category added successfully")
+                    dialog.dismiss()
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error adding category", e)
+                    showToast("Failed to add category")
+                }
+        }
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
     }
     // *************************************************************************
     // ** END OF MODIFICATION **
