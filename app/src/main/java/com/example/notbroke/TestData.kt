@@ -10,7 +10,7 @@ import com.example.notbroke.fragments.BudgetFragment.BudgetCategory
  */
 object TestData {
     private const val TAG = "TestData"
-    
+
     /**
      * Creates and returns a list of sample transactions
      */
@@ -27,7 +27,7 @@ object TestData {
             Transaction(
                 id = 2,
                 category = "Groceries",
-                amount = 2500.0,
+                amount = 10000.00,
                 type = Transaction.Type.EXPENSE,
                 description = "Monthly groceries",
                 date = System.currentTimeMillis() - 86400000, // 1 day ago
@@ -60,7 +60,7 @@ object TestData {
             )
         )
     }
-    
+
     /**
      * Creates and returns a list of sample budget categories
      */
@@ -82,4 +82,4 @@ data class BudgetCategory(
 ) {
     val percentUsed: Double
         get() = if (budgetAmount > 0) (spentAmount / budgetAmount) * 100 else 0.0
-} 
+}
