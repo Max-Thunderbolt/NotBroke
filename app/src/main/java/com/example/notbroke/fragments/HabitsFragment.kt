@@ -11,16 +11,21 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.notbroke.R
+import com.example.notbroke.models.Transaction
+import com.example.notbroke.repositories.RepositoryFactory
+import com.example.notbroke.services.AuthService
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.*
 
 class HabitsFragment : Fragment() {
@@ -28,15 +33,16 @@ class HabitsFragment : Fragment() {
     private lateinit var lineChart: LineChart
     private lateinit var titleTextView: TextView
     private lateinit var monthSpinner: Spinner
-    private lateinit var db: FirebaseFirestore
-    private lateinit var auth: FirebaseAuth
     private var selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH)
     private lateinit var btnAddTestTransaction: Button
+    
+    private lateinit var repositoryFactory: RepositoryFactory
+    private val transactionRepository by lazy { repositoryFactory.transactionRepository }
+    private val authService = AuthService.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        db = FirebaseFirestore.getInstance()
-        auth = FirebaseAuth.getInstance()
+        repositoryFactory = RepositoryFactory.getInstance(requireContext())
     }
 
     override fun onCreateView(
@@ -51,14 +57,13 @@ class HabitsFragment : Fragment() {
         monthSpinner = view.findViewById(R.id.monthSpinner)
         btnAddTestTransaction = view.findViewById(R.id.btnAddTestTransaction)
 
-
         btnAddTestTransaction.setOnClickListener {
             addTestTransaction()
         }
 
         setupLineChart()
         setupMonthSpinner()
-        loadTransactionsForMonth(selectedMonth)
+        observeTransactionsForMonth(selectedMonth)
 
         return view
     }
@@ -121,16 +126,14 @@ class HabitsFragment : Fragment() {
         monthSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 selectedMonth = position
-                loadTransactionsForMonth(selectedMonth)
+                observeTransactionsForMonth(selectedMonth)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) { }
         }
     }
 
-    private fun loadTransactionsForMonth(month: Int) {
-        val userId = auth.currentUser?.uid ?: return
-
+    private fun observeTransactionsForMonth(month: Int) {
         val calendarStart = Calendar.getInstance()
         calendarStart.set(Calendar.YEAR, Calendar.getInstance().get(Calendar.YEAR))
         calendarStart.set(Calendar.MONTH, month)
@@ -143,38 +146,35 @@ class HabitsFragment : Fragment() {
         val calendarEnd = calendarStart.clone() as Calendar
         calendarEnd.add(Calendar.MONTH, 1)
 
-        db.collection("users")
-            .document(userId)
-            .collection("transactions")
-            .whereGreaterThanOrEqualTo("date", com.google.firebase.Timestamp(calendarStart.time))
-            .whereLessThan("date", com.google.firebase.Timestamp(calendarEnd.time))
-            .get()
-            .addOnSuccessListener { documents ->
-                val daySums = mutableMapOf<Int, Double>()
+        lifecycleScope.launch {
+            try {
+                transactionRepository.getTransactionsByDateRange(
+                    calendarStart.timeInMillis,
+                    calendarEnd.timeInMillis
+                ).collectLatest { transactions ->
+                    val daySums = mutableMapOf<Int, Double>()
+                    
+                    // Filter and process transactions
+                    transactions.filter { it.type == Transaction.Type.EXPENSE }
+                        .forEach { transaction ->
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = transaction.date
+                            val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+                            daySums[dayOfMonth] = (daySums[dayOfMonth] ?: 0.0) + transaction.amount
+                        }
 
-                for (doc in documents) {
-                    val amount = doc.getDouble("amount")
-                    val timestamp = doc.getTimestamp("date")?.toDate()
-                    val type = doc.getString("type")
-
-                    if (amount != null && timestamp != null && type == "EXPENSE") {
-                        val calendar = Calendar.getInstance()
-                        calendar.time = timestamp
-                        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-                        daySums[dayOfMonth] = (daySums[dayOfMonth] ?: 0.0) + amount
+                    val entries = ArrayList<Entry>()
+                    for ((day, totalAmount) in daySums) {
+                        entries.add(Entry(day.toFloat(), totalAmount.toFloat()))
                     }
-                }
 
-                val entries = ArrayList<Entry>()
-                for ((day, totalAmount) in daySums) {
-                    entries.add(Entry(day.toFloat(), totalAmount.toFloat()))
+                    updateLineChart(entries)
                 }
-
-                updateLineChart(entries)
+            } catch (e: Exception) {
+                Log.e("HabitsFragment", "Error loading transactions", e)
+                Toast.makeText(context, "Error loading transactions: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-            }
+        }
     }
 
     private fun updateLineChart(entries: List<Entry>) {
@@ -200,11 +200,12 @@ class HabitsFragment : Fragment() {
         lineChart.data = lineData
         lineChart.invalidate()
     }
+
     private fun addTestTransaction() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = authService.getCurrentUserId() ?: return
 
         // --- MANUAL CONFIGURATION ---
-        val amount = 100 // <<== SET your custom test amount here
+        val amount = 100.0 // <<== SET your custom test amount here
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.YEAR, 2025) // <<== SET year here
         calendar.set(Calendar.MONTH, Calendar.APRIL) // <<== SET month here
@@ -214,23 +215,23 @@ class HabitsFragment : Fragment() {
         calendar.set(Calendar.SECOND, 0)
         // ----------------------------
 
-        val transaction = hashMapOf(
-            "userId" to userId,
-            "amount" to amount,
-            "type" to "EXPENSE", // <<== Type must be "EXPENSE" to show on chart
-            "date" to com.google.firebase.Timestamp(calendar.time)
+        val transaction = Transaction(
+            type = Transaction.Type.EXPENSE,
+            amount = amount,
+            description = "Test Transaction",
+            category = "Test",
+            date = calendar.timeInMillis
         )
 
-        db.collection("users")
-            .document(userId)
-            .collection("transactions")
-            .add(transaction)
-            .addOnSuccessListener {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.saveTransaction(transaction)
                 Log.d("HabitsFragment", "Test transaction added successfully!")
-                loadTransactionsForMonth(selectedMonth) // Refresh graph
-            }
-            .addOnFailureListener { e ->
+                observeTransactionsForMonth(selectedMonth) // Refresh graph
+            } catch (e: Exception) {
                 Log.e("HabitsFragment", "Failed to add test transaction", e)
+                Toast.makeText(context, "Failed to add test transaction: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
     }
 }

@@ -4,6 +4,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.content.Context
+import kotlin.jvm.Volatile
+import java.lang.ThreadLocal
 
 @Database(
     entities = [

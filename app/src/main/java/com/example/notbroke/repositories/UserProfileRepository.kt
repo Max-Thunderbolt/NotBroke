@@ -65,7 +65,6 @@ class UserProfileRepository(
     }
     
     suspend fun updateUserProfile(userId: String, username: String, email: String) = withContext(Dispatchers.IO) {
-    suspend fun updateUserProfile(userId: String, username: String, email: String) = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Updating user profile for user: $userId")
             

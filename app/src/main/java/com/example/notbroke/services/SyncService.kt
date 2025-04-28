@@ -74,11 +74,11 @@ class SyncService : Service() {
     companion object {
         const val EXTRA_USER_ID = "extra_user_id"
         
-        fun startSync(android.content.Context: android.content.Context, userId: String) {
-            val intent = Intent(android.content.Context, SyncService::class.java).apply {
+        fun startSync(context: android.content.Context, userId: String) {
+            val intent = Intent(context, SyncService::class.java).apply {
                 putExtra(EXTRA_USER_ID, userId)
             }
-            android.content.Context.startService(intent)
+            context.startService(intent)
         }
     }
 } 

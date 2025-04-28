@@ -67,6 +67,11 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     
+    // Room dependencies
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
 
@@ -101,12 +106,6 @@ dependencies {
     // Activity Result API 
     implementation("androidx.activity:activity-ktx:1.9.0") 
     implementation("androidx.fragment:fragment-ktx:1.7.1") 
-
-    // Room Database
-    kapt("androidx.room:room-compiler:2.7.0")
-    implementation("androidx.room:room-runtime:2.5.2")
-    kapt("androidx.room:room-compiler:2.5.2")
-    implementation("androidx.room:room-ktx:2.5.2")
 }
 
 // Configure tasks to handle incremental builds properly
