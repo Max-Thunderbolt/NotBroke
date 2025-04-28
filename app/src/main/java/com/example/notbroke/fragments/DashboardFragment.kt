@@ -13,8 +13,8 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.notbroke.adapters.TransactionAdapter
-import com.example.notbroke.models.Transaction
+import com.example.notbroke.adapters.TransactionAdapter // Import the adapter
+import com.example.notbroke.models.Transaction // *** Ensure this import is correct and points to your models package ***
 import android.graphics.Color
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
@@ -23,8 +23,6 @@ import com.github.mikephil.charting.data.Entry // Import Entry
 import com.github.mikephil.charting.data.PieEntry
 import android.content.res.ColorStateList
 import com.example.notbroke.R
-// REMOVE: import com.google.android.material.textfield.TextInputEditText // Not needed after removing manual category
-// REMOVE: import android.widget.AutoCompleteTextView // Not needed after removing manual category
 import android.widget.Button // Still needed for dialog buttons
 import android.app.Dialog
 import com.google.android.material.button.MaterialButton
@@ -32,14 +30,12 @@ import android.Manifest // Keep for permissions
 import android.app.Activity // Keep for ActivityResult
 import android.content.Intent // Keep for Intents
 import android.content.pm.PackageManager // Keep for permissions
-import android.graphics.Bitmap // Keep for images
 import android.graphics.BitmapFactory // Keep for images
 import android.net.Uri // Keep for images
 import android.os.Environment // Keep for images
 import android.provider.MediaStore // Keep for images
 import androidx.activity.result.ActivityResultLauncher // Keep for ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts // Keep for ActivityResult
-import androidx.core.app.ActivityCompat // Keep for permissions
 import androidx.core.content.ContextCompat // Keep for permissions/colors
 import androidx.core.content.FileProvider // Keep for camera
 import java.io.File // Keep for camera
@@ -48,13 +44,9 @@ import java.text.SimpleDateFormat // Keep for camera filename
 import java.util.Date // Keep for camera filename
 import java.util.Locale // Keep for camera filename
 import android.widget.ImageView // Keep for image preview
-// REMOVE: import android.text.Editable // Not needed after removing manual category suggestion
-// REMOVE: import android.text.TextWatcher // Not needed after removing manual category suggestion
 import android.widget.AdapterView // Add for Spinner listener
-import android.widget.AutoCompleteTextView
 import android.widget.EditText // Import EditText directly
-
-// ===== Add necessary new imports =====
+import android.widget.AutoCompleteTextView // **ADDED BACK for edit dialog**
 import androidx.lifecycle.lifecycleScope // Add for Coroutines
 import com.example.notbroke.utils.CategorizationUtils // Add the new utils class
 import com.github.mikephil.charting.components.Legend
@@ -63,17 +55,21 @@ import com.github.mikephil.charting.highlight.Highlight // Add for chart interac
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener // Add for chart interactivity
 import com.google.firebase.auth.FirebaseAuth // Add for Firebase Auth
 import com.google.firebase.firestore.FirebaseFirestore // Add for Firestore
-import com.google.firebase.firestore.Query // Add for Firestore queries
 import com.google.firebase.firestore.QuerySnapshot // Add for Firestore results
-// REMOVE: import com.google.firebase.firestore.ktx.toObject // Not needed if mapping manually
 import kotlinx.coroutines.launch // Add for Coroutines
 import kotlinx.coroutines.tasks.await // Add for Coroutines + Tasks API
 import java.util.* // Add for Calendar
+import com.example.notbroke.repositories.RepositoryFactory
+import com.example.notbroke.repositories.TransactionRepository
+import com.example.notbroke.services.FirestoreService
+import com.example.notbroke.services.AuthService
+import kotlinx.coroutines.flow.collectLatest // Add this import for collectLatest
 
 
-class DashboardFragment : Fragment() {
+// *** MODIFIED: Implement TransactionAdapter.OnItemClickListener ***
+class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     // Use companion object TAG for consistency
-    // private val TAG = "DashboardFragment" // Remove this line
+    private val TAG = "DashboardFragment" // Use const val for TAG
 
     // ===== Keep existing Views =====
     private lateinit var transactionsRecyclerView: RecyclerView
@@ -86,6 +82,7 @@ class DashboardFragment : Fragment() {
     private lateinit var balanceTextView: TextView
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
+    private lateinit var addCategoryButton: MaterialButton
 
     // ===== Keep existing Receipt image handling =====
     private var currentPhotoPath: String? = null
@@ -95,9 +92,13 @@ class DashboardFragment : Fragment() {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private var currentDialog: Dialog? = null
 
-    // ===== Add Firebase instances =====
-    private lateinit var db: FirebaseFirestore
-    private lateinit var auth: FirebaseAuth
+    // ===== Replace Firebase instances with Repository =====
+    private lateinit var repositoryFactory: RepositoryFactory
+    // Get the repository instance from the factory
+    private val transactionRepository by lazy {
+        repositoryFactory.getTransactionRepository() // Corrected access
+    }
+    private val authService = AuthService.getInstance()
 
     // Store the current date range for navigation
     private var currentStartDate: Long = 0L
@@ -105,17 +106,9 @@ class DashboardFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initializeActivityResultLaunchers() // Keep this
-        // Initialize Firebase
-        try {
-            db = FirebaseFirestore.getInstance()
-            auth = FirebaseAuth.getInstance()
-            Log.d(TAG, "onCreate: Initialized Firebase Auth and Firestore")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Firebase", e)
-            showToast("Failed to initialize core services. Please restart the app.")
-            // Consider preventing fragment load if Firebase fails
-        }
+        initializeActivityResultLaunchers()
+        // Initialize Repository Factory
+        repositoryFactory = RepositoryFactory.getInstance(requireContext())
     }
 
     override fun onCreateView(
@@ -124,12 +117,12 @@ class DashboardFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         Log.d(TAG, "onCreateView: Inflating dashboard fragment layout")
-        // Use try-catch for layout inflation
+
         return try {
             inflater.inflate(R.layout.fragment_dashboard, container, false)
         } catch (e: Exception) {
             Log.e(TAG, "Error inflating layout R.layout.fragment_dashboard", e)
-            // Optionally return a simple error view
+
             null
         }
     }
@@ -140,13 +133,17 @@ class DashboardFragment : Fragment() {
 
         try {
             initializeViews(view)
-            setupButtonListeners() // Renamed from setupFabListeners
+            setupButtonListeners()
             setupTransactionsRecyclerView()
+            transactionAdapter.setOnItemClickListener(this)
 
-            // Setup budget components - Chart and Spinner setup remains
+
             setupPieChart()
             setupChartListener()
-            setupPeriodSpinner() // This will now trigger the initial data load via its listener
+            setupPeriodSpinner()
+
+            // Replace loadTransactions() call with observeTransactions()
+            observeTransactions()
 
             Log.d(TAG, "onViewCreated: Setup complete.")
 
@@ -171,6 +168,7 @@ class DashboardFragment : Fragment() {
             balanceTextView = view.findViewById(R.id.balanceTextView)
             balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
             balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
+            addCategoryButton = view.findViewById(R.id.addCategoryButton)
             Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing views", e)
@@ -258,7 +256,7 @@ class DashboardFragment : Fragment() {
 
             setDrawEntryLabels(false) // Keep slice labels off
             // setEntryLabelColor(Color.WHITE) // Not needed if entry labels are off
-            // setEntryLabelTextSize(10f)    // Not needed if entry labels are off
+            // setEntryLabelTextSize(10f)    // Not needed if entry labels off
 
             // --- No Data Text ---
             context?.let { ctx ->
@@ -294,17 +292,30 @@ class DashboardFragment : Fragment() {
 
         // Use context safely
         context?.let { ctx ->
-            val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, periods)
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            // Use the custom layout for the selected item
+            val adapter = ArrayAdapter(ctx, R.layout.spinner_selected_item, periods)
+            // Use the custom layout for the dropdown items
+            adapter.setDropDownViewResource(R.layout.spinner_dropdown_item)
             periodSpinner.adapter = adapter
 
             periodSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    // Style the selected item (optional, handle potential null view)
-                    (view as? TextView)?.setTextColor(Color.parseColor("#FFD700"))
+                    // Remove manual text color setting, handled by spinner_selected_item.xml
                     val selectedPeriod = periods[position]
                     Log.i(TAG, "Period selected via spinner: $selectedPeriod")
-                    loadTransactionsForPeriod(selectedPeriod) // Trigger Firestore load
+                    // Update date range based on selection
+                    val (startDate, endDate) = getDateRangeForPeriod(selectedPeriod)
+                    if (startDate != null && endDate != null) {
+                        currentStartDate = startDate
+                        currentEndDate = endDate
+                        // Observing allTransactions flow will automatically react to date range changes in filter
+                        // No explicit load call needed here if the flow is already being observed and filtered
+                    } else {
+                        // Handle invalid period selection if necessary
+                        currentStartDate = 0L
+                        currentEndDate = 0L
+                        clearUiData() // Clear data if period is invalid or date range cannot be calculated
+                    }
                 }
                 override fun onNothingSelected(parent: AdapterView<*>?) { /* No action needed */ }
             }
@@ -315,12 +326,19 @@ class DashboardFragment : Fragment() {
     }
 
 
-    private fun updatePieChart(categoryTotals: Map<String, Double>) {
-        Log.d(TAG, "updatePieChart: Updating with ${categoryTotals.size} categories.")
+    private fun updatePieChart(transactions: List<Transaction>) { // Changed parameter to List<Transaction>
+        Log.d(TAG, "updatePieChart: Updating with ${transactions.size} transactions.")
         if (!isAdded) {
             Log.w(TAG, "updatePieChart: Fragment not attached, skipping update.")
             return
         }
+
+        // Filter for expense transactions and group by category to calculate totals
+        val categoryTotals = transactions
+            .filter { it.type == Transaction.Type.EXPENSE }
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.sumOf { it.amount } }
+
 
         // Check for empty or all-zero data
         val positiveEntries = categoryTotals.filter { it.value > 0 }
@@ -390,11 +408,14 @@ class DashboardFragment : Fragment() {
             Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
         }
+        addCategoryButton.setOnClickListener {
+            showAddCategoryDialog()
+        }
     }
 
 
     // *************************************************************************
-    // ** MODIFIED: showTransactionDialog for Automatic Expense Categorization **
+    // showTransactionDialog for Automatic Expense Categorization
     // *************************************************************************
     private fun showTransactionDialog(type: Transaction.Type) {
         Log.d(TAG, "showTransactionDialog: Showing dialog for type: ${type.name}")
@@ -422,14 +443,22 @@ class DashboardFragment : Fragment() {
         val titleTextView = dialog.findViewById<TextView>(R.id.dialogTitleTextView)
         val amountEditText = dialog.findViewById<EditText>(R.id.amountEditText) // Changed to EditText
         val descriptionEditText = dialog.findViewById<EditText>(R.id.descriptionEditText) // Changed to EditText
-        val categoryInputLayout = dialog.findViewById<View>(R.id.categoryInputLayout) // Get the Layout container for category
+        // REMOVED: val categoryInputLayout = dialog.findViewById<View>(R.id.categoryInputLayout)
         val takePictureButton = dialog.findViewById<Button>(R.id.takePictureButton)
         val chooseImageButton = dialog.findViewById<Button>(R.id.chooseImageButton)
         val receiptImageView = dialog.findViewById<ImageView>(R.id.receiptImagePreview)
         val cancelButton = dialog.findViewById<Button>(R.id.cancelButton)
         val addButton = dialog.findViewById<Button>(R.id.addButton)
 
-        if (amountEditText == null || descriptionEditText == null || categoryInputLayout == null || addButton == null || cancelButton == null || titleTextView == null) {
+        // Declare and initialize categoryAutoComplete if it exists in this dialog layout
+        // Based on the conflicting declaration error, it seems you might have intended to use it here,
+        // but the logic determines the category automatically. If your dialog_add_transaction.xml
+        // *does* have a categoryAutoComplete, initialize it here. Otherwise, remove this line.
+        // For now, assuming it might exist for completeness, but the logic below doesn't use its text.
+        val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+
+
+        if (amountEditText == null || descriptionEditText == null || addButton == null || cancelButton == null || titleTextView == null) {
             Log.e(TAG, "showTransactionDialog: Could not find essential views. Aborting.")
             showToast("Error displaying dialog.")
             dialog.dismiss()
@@ -445,24 +474,6 @@ class DashboardFragment : Fragment() {
         titleTextView.text = if (type == Transaction.Type.INCOME) "Add Income" else "Add Expense"
         addButton.text = if (type == Transaction.Type.INCOME) "ADD INCOME" else "ADD EXPENSE"
 
-        // **MODIFICATION**: Hide category input for expenses
-        if (type == Transaction.Type.EXPENSE) {
-            categoryInputLayout.visibility = View.GONE
-            Log.d(TAG, "Dialog Type: EXPENSE - Hiding category input.")
-        } else {
-            categoryInputLayout.visibility = View.VISIBLE
-            Log.d(TAG, "Dialog Type: INCOME - Showing category input.")
-            // Setup Category Adapter for INCOME only
-            // (Assuming R.id.categoryAutoComplete is inside R.id.categoryInputLayout)
-            val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
-            categoryAutoComplete?.let { // Ensure AutoCompleteTextView exists if layout is visible
-                val categories = CategorizationUtils.incomeCategories // Use specific income categories
-                val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, categories)
-                it.setAdapter(categoryAdapter)
-                it.threshold = 1
-                Log.d(TAG, "Category adapter set for INCOME with ${categories.size} categories.")
-            } ?: Log.w(TAG, "Category AutoCompleteTextView not found, even though layout is visible for INCOME.")
-        }
 
 
         // Keep image button listeners
@@ -479,7 +490,10 @@ class DashboardFragment : Fragment() {
             Log.d(TAG, "Add Transaction Dialog: Add button clicked.")
             val amountStr = amountEditText.text.toString().trim()
             val description = descriptionEditText.text.toString().trim()
+            // Removed duplicate declaration of category
+            // val category = categoryAutoComplete?.text?.toString()?.trim() ?: "" // This line was using unresolved reference initially
             val date = System.currentTimeMillis()
+
 
             // Validation
             if (amountStr.isBlank() || description.isBlank()) {
@@ -493,34 +507,28 @@ class DashboardFragment : Fragment() {
             }
 
             // **MODIFICATION**: Determine Category
-            val category: String
-            if (type == Transaction.Type.INCOME) {
-                // Get category from dropdown for income
-                val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
-                category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
-                if (category.isBlank() || !CategorizationUtils.incomeCategories.contains(category)) {
-                    showToast("Please select a valid income category")
-                    return@setOnClickListener
-                }
-                Log.d(TAG,"Income category selected: $category")
+            val category: String // Single declaration
+            category = if (type == Transaction.Type.INCOME) {
+                "Income" // Assuming "Income" is a valid category for income transactions
             } else {
-                // Suggest category automatically for expense
-                category = CategorizationUtils.suggestCategory(description) ?: "Other" // Default to "Other" if no suggestion
-                Log.d(TAG,"Expense category suggested: $category for description: '$description'")
+                // Use your existing logic for suggesting/defaulting category for expenses
+                CategorizationUtils.suggestCategory(description) ?: "Other"
             }
+            Log.d(TAG,"Determined category: $category for type: ${type.name}, description: '$description'")
+
 
             val transaction = Transaction(
-                id = date, // Temporary local ID
+                // id is generated by Firestore when using add() - repository handles local ID
                 type = type,
                 amount = amount,
                 description = description,
                 category = category, // Use determined category
-                date = date,
-                receiptImageUri = selectedImageUri?.toString() // Keep image URI
+                date = date, // Using client-side date for now, will be overwritten by serverTimestamp if FirestoreService does that
+                receiptImageUri = selectedImageUri?.toString() // Keep image URI (String? is fine)
             )
 
             Log.d(TAG, "Attempting to save transaction: $transaction")
-            saveTransactionToFirestore(transaction) // Save to Firestore
+            addTransaction(transaction) // Save using the repository
 
             dialog.dismiss()
             currentDialog = null
@@ -531,12 +539,158 @@ class DashboardFragment : Fragment() {
             currentDialog = null
         }
 
+
         dialog.show()
         Log.d(TAG, "showTransactionDialog: Dialog shown.")
     }
-    // *************************************************************************
-    // ** END OF MODIFICATION **
-    // *************************************************************************
+
+    // *** ADDED: Implementation of TransactionAdapter.OnItemClickListener ***
+    override fun onItemClick(transaction: Transaction) {
+        Log.d(TAG, "Transaction item clicked: ${transaction.description}")
+        // Show the edit dialog for this transaction
+        showEditTransactionDialog(transaction)
+    }
+
+
+    // *** ADDED: Function to show the Edit Transaction Dialog ***
+    private fun showEditTransactionDialog(transaction: Transaction) {
+        Log.d(TAG, "showEditTransactionDialog: Showing dialog for transaction: ${transaction.firestoreId}")
+        if (currentDialog?.isShowing == true) {
+            Log.w(TAG, "showEditTransactionDialog: Dialog already showing.")
+            return
+        }
+
+        val context = requireContext() ?: return
+
+        val dialog = Dialog(context)
+        // *** IMPORTANT: Use the new edit dialog layout ***
+        dialog.setContentView(R.layout.dialog_edit_transaction)
+        currentDialog = dialog
+
+        try {
+            val width = (resources.displayMetrics.widthPixels * 0.95).toInt()
+            dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+            dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting dialog layout params", e)
+        }
+
+
+        // Initialize dialog views
+        val titleTextView = dialog.findViewById<TextView>(R.id.dialogTitleTextView)
+        val amountEditText = dialog.findViewById<EditText>(R.id.amountEditText)
+        val descriptionEditText = dialog.findViewById<EditText>(R.id.descriptionEditText)
+        // Category AutoCompleteTextView from the edit dialog layout - Declared and initialized
+        val categoryAutoComplete = dialog.findViewById<AutoCompleteTextView>(R.id.categoryAutoComplete)
+        val cancelButton = dialog.findViewById<Button>(R.id.cancelButton)
+        val deleteButton = dialog.findViewById<Button>(R.id.deleteButton) // Added Delete button
+        val saveButton = dialog.findViewById<Button>(R.id.saveButton) // Renamed Add to Save
+
+        if (amountEditText == null || descriptionEditText == null || categoryAutoComplete == null ||
+            saveButton == null || cancelButton == null || deleteButton == null || titleTextView == null) {
+            Log.e(TAG, "showEditTransactionDialog: Could not find essential views. Aborting.")
+            showToast("Error displaying edit dialog.")
+            dialog.dismiss()
+            currentDialog = null
+            return
+        }
+
+
+        // Populate dialog with transaction data
+        titleTextView.text = "Edit ${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }}"
+        amountEditText.setText(String.format(Locale.getDefault(), "%.2f", transaction.amount))
+        descriptionEditText.setText(transaction.description)
+
+
+        // Setup Category AutoCompleteTextView with categories, ensuring 'Other' is last
+        var allCategories = CategorizationUtils.allCategories.toMutableList()
+        if (allCategories.remove("Other")) {
+            allCategories.add("Other")
+        }
+        val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, allCategories)
+
+        categoryAutoComplete.setAdapter(categoryAdapter)
+        categoryAutoComplete.threshold = 1
+
+        // Set the current category in the AutoCompleteTextView
+        categoryAutoComplete.setText(transaction.category, false) // false to not show dropdown
+
+
+        cancelButton.setOnClickListener {
+            Log.d(TAG, "Edit Transaction Dialog: Cancel clicked.")
+            dialog.dismiss()
+            currentDialog = null
+        }
+
+        deleteButton.setOnClickListener {
+            Log.d(TAG, "Edit Transaction Dialog: Delete clicked for ID: ${transaction.firestoreId}")
+            // *** ADDED: Implement Delete functionality ***
+            deleteTransaction(transaction) // Use the repository
+            dialog.dismiss()
+            currentDialog = null
+        }
+
+
+        saveButton.setOnClickListener {
+            Log.d(TAG, "Edit Transaction Dialog: Save clicked for ID: ${transaction.firestoreId}")
+            val amountStr = amountEditText.text.toString().trim()
+            val description = descriptionEditText.text.toString().trim()
+            val selectedCategory = categoryAutoComplete.text.toString().trim() // Use initialized variable
+
+            // Validation
+            if (amountStr.isBlank() || description.isBlank() || selectedCategory.isBlank()) {
+                showToast("Please fill all fields")
+                return@setOnClickListener
+            }
+            val amount = amountStr.toDoubleOrNull()
+            if (amount == null || amount <= 0) {
+                showToast("Please enter a valid positive amount")
+                return@setOnClickListener
+            }
+            // Optional: Validate if the selected category is in the list of all categories if strict
+            if (!allCategories.contains(selectedCategory) && selectedCategory != "Uncategorized") {
+                Log.w(TAG, "Selected category '$selectedCategory' not in known categories.")
+            }
+
+
+            // Create an updated transaction object
+            val updatedTransaction = transaction.copy(
+                amount = amount,
+                description = description,
+                category = selectedCategory
+                // Receipt image handling would go here if implemented for edit dialog
+            )
+
+            // *** ADDED: Call function to update in Firestore ***
+            updateTransaction(updatedTransaction) // Use the repository
+
+            dialog.dismiss()
+            currentDialog = null
+        }
+
+        dialog.setOnDismissListener {
+            Log.d(TAG, "Edit Transaction Dialog dismissed.")
+            currentDialog = null
+        }
+
+
+        dialog.show()
+        Log.d(TAG, "showEditTransactionDialog: Dialog shown.")
+    }
+
+    // *** ADDED: Placeholder for showAddCategoryDialog ***
+    private fun showAddCategoryDialog() {
+        Log.d(TAG, "showAddCategoryDialog: Showing dialog to add a new category (Placeholder)")
+        // Implement the logic to show a dialog for adding a new category.
+        // This would typically involve:
+        // 1. Inflating a dialog layout with an EditText for the new category name.
+        // 2. Getting the user input.
+        // 3. Adding the new category to your list of available categories (e.g., in CategorizationUtils or a separate repository).
+        // 4. Refreshing any UI elements that display categories (like the AutoCompleteTextViews).
+        context?.let {
+            Toast.makeText(it, "Add Category dialog would be shown here.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
 
     private fun showToast(message: String) {
@@ -545,7 +699,6 @@ class DashboardFragment : Fragment() {
             Toast.makeText(it, message, Toast.LENGTH_SHORT).show()
         }
     }
-
 
     companion object {
         // Define TAG consistently
@@ -556,7 +709,6 @@ class DashboardFragment : Fragment() {
         }
     }
 
-
     override fun onDestroyView() {
         Log.d(TAG, "onDestroyView: Cleaning up dialog reference.")
         currentDialog?.dismiss() // Dismiss safely
@@ -565,7 +717,6 @@ class DashboardFragment : Fragment() {
         // pieChart = null // etc.
         super.onDestroyView()
     }
-
 
     private fun initializeActivityResultLaunchers() {
         Log.d(TAG, "initializeActivityResultLaunchers: Setting up.")
@@ -584,7 +735,12 @@ class DashboardFragment : Fragment() {
                         }
 
                         if (selectedImageUri != null) {
-                            loadBitmapFromUri(selectedImageUri)
+                            // This part needs to be updated to handle preview in the *current* dialog (add or edit)
+                            // loadBitmapFromUri(selectedImageUri) // Original call
+                            currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
+                                loadBitmapIntoImageView(selectedImageUri, imageView)
+                            } ?: Log.w(TAG, "Receipt preview ImageView not found in current dialog.")
+
                         } else {
                             showToast("Failed to get image URI.")
                         }
@@ -613,7 +769,12 @@ class DashboardFragment : Fragment() {
                     // val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
                     // requireContext().contentResolver.takePersistableUriPermission(uri, takeFlags)
                     selectedImageUri = uri
-                    loadBitmapFromUri(selectedImageUri) // Load preview
+                    // This part needs to be updated to handle preview in the *current* dialog (add or edit)
+                    // loadBitmapFromUri(selectedImageUri) // Original call
+                    currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
+                        loadBitmapIntoImageView(selectedImageUri, imageView)
+                    } ?: Log.w(TAG, "Receipt preview ImageView not found in current dialog.")
+
                 } ?: run {
                     Log.w(TAG, "Gallery Result OK, but URI is null")
                     showToast("Failed to get image from gallery")
@@ -633,33 +794,25 @@ class DashboardFragment : Fragment() {
         }
     }
 
-
-    private fun loadBitmapFromUri(uri: Uri?) {
-        if (uri == null) return
-        // Use context safely
+    private fun loadBitmapIntoImageView(uri: Uri?, imageView: ImageView?) {
+        if (uri == null || imageView == null) return
         context?.let { ctx ->
             try {
-                // Use contentResolver to open InputStream
-                ctx.contentResolver.openInputStream(uri)?.use { inputStream -> // Use 'use' for auto-closing
+                ctx.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val bitmap = BitmapFactory.decodeStream(inputStream)
-                    currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.let { imageView ->
-                        imageView.setImageBitmap(bitmap)
-                        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-                        Log.d(TAG, "Bitmap loaded into preview from URI: $uri")
-                    }
+                    imageView.setImageBitmap(bitmap)
+                    imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                    Log.d(TAG, "Bitmap loaded into preview from URI: $uri")
                 } ?: Log.e(TAG, "Failed to open input stream for URI: $uri")
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading bitmap from URI: $uri", e)
                 showToast("Failed to load image preview")
-                // Reset preview on error
-                currentDialog?.findViewById<ImageView>(R.id.receiptImagePreview)?.setImageResource(android.R.drawable.ic_menu_gallery)
+                imageView.setImageResource(android.R.drawable.ic_menu_gallery)
             }
-        } ?: Log.w(TAG, "loadBitmapFromUri: Context is null.")
+        } ?: Log.w(TAG, "loadBitmapIntoImageView: Context is null.")
     }
 
-
     private fun checkCameraPermission(): Boolean {
-        // Use context safely
         return context?.let { ctx ->
             if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                 true
@@ -670,17 +823,15 @@ class DashboardFragment : Fragment() {
             }
         } ?: run {
             Log.w(TAG, "checkCameraPermission: Context is null, cannot check permission.")
-            false // Cannot proceed without context
+            false
         }
     }
 
 
     private fun dispatchTakePictureIntent() {
         Log.d(TAG, "dispatchTakePictureIntent: Attempting to launch camera.")
-        // Use context safely
         context?.let { ctx ->
             Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-                // Ensure the intent can be resolved
                 if (takePictureIntent.resolveActivity(ctx.packageManager) == null) {
                     Log.e(TAG, "No camera app found to handle intent.")
                     showToast("No camera application found")
@@ -691,12 +842,11 @@ class DashboardFragment : Fragment() {
                     val photoFile: File = createImageFile()
                     val photoURI: Uri = FileProvider.getUriForFile(
                         ctx,
-                        "com.example.notbroke.fileprovider", // Ensure this matches AndroidManifest provider authority
+                        "com.example.notbroke.fileprovider",
                         photoFile
                     )
-                    currentPhotoPath = photoFile.absolutePath // Store path *after* successful file creation
+                    currentPhotoPath = photoFile.absolutePath
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                    // Grant temporary write permission to the camera app
                     takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     Log.d(TAG, "Launching camera intent with output URI: $photoURI and path: $currentPhotoPath")
                     takePictureLauncher.launch(takePictureIntent)
@@ -710,7 +860,7 @@ class DashboardFragment : Fragment() {
                     currentPhotoPath = null
                 } catch (ex: SecurityException) {
                     Log.e(TAG, "Security exception launching camera, check permissions?", ex)
-                    showToast("Camera permission issue")
+                    showToast("Camera permission issue") // This is where the "Camera permission issue" toast originates
                     currentPhotoPath = null
                 }
             }
@@ -721,22 +871,20 @@ class DashboardFragment : Fragment() {
 
     @Throws(IOException::class)
     private fun createImageFile(): File {
-        // Use context safely
         val context = requireContext() ?: throw IOException("Context is unavailable")
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.UK).format(Date())
         val storageDir: File? = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
 
-        if (storageDir == null) { // Check if storageDir itself is null
+        if (storageDir == null) {
             Log.e(TAG, "External picture directory is null.")
             throw IOException("Cannot access picture storage directory")
         }
-        if (!storageDir.exists() && !storageDir.mkdirs()) { // Check if exists OR can be created
+        if (!storageDir.exists() && !storageDir.mkdirs()) {
             Log.e(TAG, "External picture directory does not exist and could not be created.")
             throw IOException("Cannot create picture storage directory")
         }
 
         Log.d(TAG, "Creating image file in: ${storageDir.absolutePath}")
-        // Create the file
         return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
     }
 
@@ -744,181 +892,71 @@ class DashboardFragment : Fragment() {
     private fun openGallery() {
         Log.d(TAG, "openGallery: Launching gallery picker intent.")
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        // Consider adding type filtering if needed: intent.type = "image/*"
         pickImageLauncher.launch(intent)
     }
 
     // ==========================================================
-    // ===== Firestore & Data Handling Methods (with improvements) ====
+    //              Firestore & Data Handling Methods
     // ==========================================================
 
-    private fun saveTransactionToFirestore(transaction: Transaction) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "saveTransactionToFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
+    private fun addTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.saveTransaction(transaction)
+                Toast.makeText(context, "Transaction added successfully", Toast.LENGTH_SHORT).show()
+                // Data will be updated automatically via the observed Flow
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Error adding transaction", e)
+            }
         }
-        Log.d(TAG, "saveTransactionToFirestore: Saving transaction for user $userId")
-
-        // Using Server Timestamp is generally recommended for consistency
-        val transactionData = mapOf(
-            "amount" to transaction.amount,
-            "type" to transaction.type.name,
-            "description" to transaction.description,
-            "category" to transaction.category,
-            // "date" to transaction.date, // Keep local if offline support is complex
-            "date" to com.google.firebase.firestore.FieldValue.serverTimestamp(), // Use server time
-            "receiptImageUri" to transaction.receiptImageUri // Store as String or null
-        )
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .add(transactionData) // Let Firestore generate the ID
-            .addOnSuccessListener { documentReference ->
-                Log.i(TAG, "saveTransactionToFirestore: Success! Document ID: ${documentReference.id}")
-                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} added")
-                // Refresh data for the currently selected period
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "saveTransactionToFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "saveTransactionToFirestore: Error adding transaction", e)
-                showToast("Error saving transaction: ${e.localizedMessage}")
-            }
     }
 
+    private fun updateTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.updateTransaction(transaction)
+                Toast.makeText(context, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
+                // Data will be updated automatically via the observed Flow
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Error updating transaction", e)
+            }
+        }
+    }
+
+    private fun deleteTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.deleteTransaction(transaction)
+                Toast.makeText(context, "Transaction deleted successfully", Toast.LENGTH_SHORT).show()
+                // Data will be updated automatically via the observed Flow
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Error deleting transaction", e)
+            }
+        }
+    }
+
+    // This function is now primarily used to set the date range,
+    // the observation of allTransactions handles the filtering and UI updates.
     private fun loadTransactionsForPeriod(period: String) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "loadTransactionsForPeriod: User not logged in.")
-            clearUiData()
-            return
-        }
-
-        val (startDate, endDate) = getDateRangeForPeriod(period)
-        if (startDate == null || endDate == null) {
-            Log.e(TAG, "loadTransactionsForPeriod: Invalid date range for period '$period'. Cannot load.")
-            clearUiData()
-            return
-        }
-
-        Log.i(TAG, "loadTransactionsForPeriod: Loading for '$period' (User: $userId, Start: ${Date(startDate)}, End: ${Date(endDate)})")
-        // Show loading indicator?
-
-        viewLifecycleOwner.lifecycleScope.launch { // Use lifecycleScope
-            try {
-                // Convert Long dates to Firestore Timestamp for querying
-                val startTimestamp = com.google.firebase.Timestamp(startDate / 1000, (startDate % 1000 * 1000000).toInt())
-                val endTimestamp = com.google.firebase.Timestamp(endDate / 1000, (endDate % 1000 * 1000000).toInt())
-
-                val querySnapshot = db.collection("users").document(userId)
-                    .collection("transactions")
-                    .whereGreaterThanOrEqualTo("date", startTimestamp) // Query with Timestamp
-                    .whereLessThanOrEqualTo("date", endTimestamp)     // Query with Timestamp
-                    // Keep ordering by date on client side for flexibility
-                    .get()
-                    .await() // Use await() for cleaner async handling
-
-                Log.d(TAG, "loadTransactionsForPeriod: Firestore fetch successful, ${querySnapshot.size()} documents.")
-                processFirestoreResults(querySnapshot)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "loadTransactionsForPeriod: Error fetching from Firestore", e)
-                showToast("Error loading transactions: ${e.localizedMessage}")
-                clearUiData()
-            } finally {
-                // Hide loading indicator
-            }
-        }
-    }
-
-    private fun processFirestoreResults(snapshot: QuerySnapshot) {
-        Log.d(TAG, "processFirestoreResults: Processing ${snapshot.size()} documents.")
-        val transactions = snapshot.documents.mapNotNull { doc ->
-            try {
-                val data = doc.data ?: return@mapNotNull null // Skip if data is null
-
-                val typeString = data["type"] as? String
-                val transactionType = try {
-                    if (typeString != null) Transaction.Type.valueOf(typeString) else Transaction.Type.EXPENSE
-                } catch (e: IllegalArgumentException) {
-                    Log.w(TAG, "Invalid type '$typeString' in doc ${doc.id}, defaulting to EXPENSE.")
-                    Transaction.Type.EXPENSE
-                }
-
-                // Handle Firestore Timestamp for date
-                val firestoreTimestamp = data["date"] as? com.google.firebase.Timestamp
-                val dateMillis = firestoreTimestamp?.toDate()?.time ?: run {
-                    // Fallback if date is stored as Long (should be avoided)
-                    Log.w(TAG,"Date field in doc ${doc.id} is not a Timestamp, trying Long.")
-                    (data["date"] as? Long) ?: 0L
-                }
-                if (dateMillis == 0L) {
-                    Log.w(TAG,"Could not parse date for doc ${doc.id}, skipping.")
-                    return@mapNotNull null // Skip if date is invalid
-                }
-
-
-                Transaction(
-                    id = doc.id.hashCode().toLong(), // Use Firestore ID hash
-                    amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
-                    type = transactionType,
-                    description = data["description"] as? String ?: "",
-                    category = data["category"] as? String ?: "Uncategorized",
-                    date = dateMillis, // Use parsed milliseconds
-                    receiptImageUri = data["receiptImageUri"] as? String // Nullable
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error mapping document ${doc.id}", e)
-                null // Skip documents that fail mapping
-            }
-        }.sortedByDescending { it.date } // Sort by date descending
-
-        Log.i(TAG, "processFirestoreResults: Mapped ${transactions.size} transactions successfully.")
-
-        // Update UI on the main thread safely
-        activity?.runOnUiThread {
-            if (!isAdded) {
-                Log.w(TAG, "processFirestoreResults: Fragment not attached, skipping UI update.")
-                return@runOnUiThread
-            }
-
-            Log.d(TAG, "Updating UI: RecyclerView, Balance, PieChart")
-            transactionAdapter.setTransactions(transactions)
-            updateBalance(transactions)
-
-            val expenseTransactions = transactions.filter { it.type == Transaction.Type.EXPENSE }
-            val expenseCategoryTotals = calculateCategoryTotals(expenseTransactions)
-            updatePieChart(expenseCategoryTotals)
-
-            // Update Budget Summary Texts (Placeholders)
-            val totalSpent = expenseCategoryTotals.values.sum()
-            totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
-            totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
-            remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
-
-            Log.d(TAG, "UI Update complete.")
-        }
+        val userId = authService.getCurrentUserId() ?: return
+        Log.d(TAG, "Loading transactions for period: $period")
+        // The observation of allTransactions flow will filter based on the set currentStartDate and currentEndDate
     }
 
 
-    private fun calculateCategoryTotals(expenseTransactions: List<Transaction>): Map<String, Double> {
-        Log.d(TAG, "calculateCategoryTotals: Calculating for ${expenseTransactions.size} expenses.")
-        if (expenseTransactions.isEmpty()) return emptyMap()
+    private fun updateTransactionSummary(transactions: List<Transaction>) {
+        updateBalance(transactions)
+        // Calculate total spent ONLY for Expense type transactions within the current date range
+        val totalSpent = transactions
+            .filter { it.type == Transaction.Type.EXPENSE }
+            .sumOf { it.amount }
+        totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
 
-        // Group by category, sum amounts, filter zero totals, and sort
-        val totals = expenseTransactions
-            .groupBy { it.category.trim().ifBlank { "Uncategorized" } } // Trim and handle blank categories
-            .mapValues { (_, transactionsInCategory) ->
-                transactionsInCategory.sumOf { it.amount }
-            }
-            .filterValues { it > 0 } // Only include categories with spending > 0
-            .toSortedMap() // Sort categories alphabetically
-
-        Log.d(TAG, "calculateCategoryTotals: Calculated totals for ${totals.size} categories.")
-        return totals
+        totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget for the period
+        remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget and spent
     }
 
     private fun getDateRangeForPeriod(period: String): Pair<Long?, Long?> {
@@ -935,7 +973,8 @@ class DashboardFragment : Fragment() {
 
                     // End of month calculation (go to start of next month, subtract 1ms)
                     calendar.add(Calendar.MONTH, 1)
-                    calendar.add(Calendar.MILLISECOND, -1)
+                    setCalendarToStartOfDay(calendar) // Go to start of next month
+                    calendar.add(Calendar.MILLISECOND, -1) // Subtract 1ms to get end of current month
                     endDateMillis = calendar.timeInMillis
                 }
                 "Last Month" -> {
@@ -949,6 +988,7 @@ class DashboardFragment : Fragment() {
                     // Calendar is now at the end of last month. Set to start of last month.
                     calendar.set(Calendar.DAY_OF_MONTH, 1)
                     setCalendarToStartOfDay(calendar)
+                    calendar.add(Calendar.MONTH, -1) // Go back one month
                     startDateMillis = calendar.timeInMillis
                 }
                 "This Year" -> {
@@ -971,9 +1011,7 @@ class DashboardFragment : Fragment() {
             if(startDateMillis != null && endDateMillis != null) {
                 Log.d(TAG,"Date range for '$period': ${Date(startDateMillis)} to ${Date(endDateMillis)}")
             }
-            // Store current range for navigation use
-            currentStartDate = startDateMillis ?: 0L
-            currentEndDate = endDateMillis ?: 0L
+            // The calling function will set currentStartDate and currentEndDate
             return Pair(startDateMillis, endDateMillis)
         } catch (e: Exception) {
             Log.e(TAG, "Error calculating date range for '$period'", e)
@@ -996,7 +1034,6 @@ class DashboardFragment : Fragment() {
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
     }
-
 
     // Helper to get consistent colors for categories
     private fun getChartColors(categories: List<String>): List<Int> {
@@ -1023,7 +1060,6 @@ class DashboardFragment : Fragment() {
         return colors
     }
 
-
     // Placeholder for navigation - implement this based on your navigation setup
     private fun navigateToCategoryDetails(categoryName: String) {
         if (currentStartDate == 0L || currentEndDate == 0L) {
@@ -1033,15 +1069,6 @@ class DashboardFragment : Fragment() {
         }
         Log.i(TAG,"Attempting navigation to details for category: '$categoryName' (Period: ${Date(currentStartDate)} - ${Date(currentEndDate)})")
         showToast("Navigate for: $categoryName") // Placeholder
-
-        // --- TODO: IMPLEMENT ACTUAL NAVIGATION ---
-        // e.g., using Navigation Component:
-        // val action = DashboardFragmentDirections.actionDashboardFragmentToCategoryDetailsFragment(
-        //     categoryName,
-        //     currentStartDate,
-        //     currentEndDate
-        // )
-        // findNavController().navigate(action)
     }
 
 
@@ -1050,8 +1077,8 @@ class DashboardFragment : Fragment() {
         // Use runOnUiThread safely checking fragment attachment
         activity?.runOnUiThread {
             if (!isAdded) return@runOnUiThread
-            transactionAdapter.setTransactions(emptyList())
-            updatePieChart(emptyMap()) // This will handle clearing the chart
+            transactionAdapter.submitList(emptyList())
+            updatePieChart(emptyList()) // Pass empty list to updatePieChart
             updateBalance(emptyList())
             totalSpentTextView.text = "R 0.00"
             totalBudgetTextView.text = "R ----.--"
@@ -1059,4 +1086,33 @@ class DashboardFragment : Fragment() {
         }
     }
 
-} // === End of DashboardFragment class ===
+    private fun observeTransactions() {
+        val userId = authService.getCurrentUserId() ?: return
+
+        lifecycleScope.launch {
+            // Explicitly specify the type of the collected list
+            transactionRepository.allTransactions.collectLatest { transactions: List<Transaction> ->
+                Log.d(TAG, "Observed ${transactions.size} transactions. Current date range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
+                // Filter transactions by the currently set date range
+                val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactions.filter { transaction: Transaction -> // Explicitly specify the type of 'it'
+                        transaction.date in currentStartDate..currentEndDate
+                    }
+                } else {
+                    // If no specific date range is set, show all or handle as per default period logic
+                    transactions // Showing all if range is 0..0, adjust if default period should be "This Month" initially
+                }
+
+                Log.d(TAG, "Filtered to ${filteredTransactions.size} transactions for current period.")
+
+                // Update adapter with filtered transactions
+                transactionAdapter.submitList(filteredTransactions)
+
+                // Update UI with transaction data
+                updateTransactionSummary(filteredTransactions) // Pass filtered transactions
+                updatePieChart(filteredTransactions) // Pass filtered transactions
+            }
+        }
+    }
+
+}

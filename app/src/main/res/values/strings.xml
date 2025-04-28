@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BudgetApp</string>
+    <string name="select_category_prompt">Select Category</string>
 </resources>

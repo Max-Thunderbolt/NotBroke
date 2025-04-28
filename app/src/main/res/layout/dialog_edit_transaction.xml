@@ -11,7 +11,7 @@
         android:id="@+id/dialogTitleTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Add Transaction"
+        android:text="Edit Transaction"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@color/gold"
@@ -62,7 +62,6 @@
         android:popupBackground="#1E1E1E"
         app:boxBackgroundColor="#2D2D2D"
         style="@style/AppTheme.DropdownStyle">
-
         <AutoCompleteTextView
             android:id="@+id/categoryAutoComplete"
             android:layout_width="match_parent"
@@ -75,70 +74,6 @@
             android:inputType="none"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-
-    <!-- Receipt Image Upload Section -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="16dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Receipt Image (Optional)"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:id="@+id/receiptImagePreview"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_marginEnd="16dp"
-                android:background="#2D2D2D"
-                android:scaleType="centerInside"
-                android:src="@android:drawable/ic_menu_gallery"
-                app:tint="#AAAAAA"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <Button
-                    android:id="@+id/takePictureButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="TAKE PICTURE"
-                    android:textSize="12sp"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#3C3C3C"
-                    android:drawableStart="@android:drawable/ic_menu_camera"
-                    android:paddingStart="16dp"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
-
-                <Button
-                    android:id="@+id/chooseImageButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="CHOOSE FROM GALLERY"
-                    android:textSize="12sp"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#3C3C3C"
-                    android:drawableStart="@android:drawable/ic_menu_gallery"
-                    android:paddingStart="16dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
-            </LinearLayout>
-        </LinearLayout>
-    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -156,10 +91,21 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"/>
 
         <Button
-            android:id="@+id/addButton"
+            android:id="@+id/deleteButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ADD"
+            android:text="DELETE"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#D32F2F"
+            android:layout_marginEnd="8dp"
+            style="@style/Widget.MaterialComponents.Button"/>
+
+
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SAVE"
             android:backgroundTint="#FF4081"
             style="@style/Widget.MaterialComponents.Button"/>
     </LinearLayout>

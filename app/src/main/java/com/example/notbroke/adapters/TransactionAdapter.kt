@@ -5,22 +5,24 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.notbroke.R
 import com.example.notbroke.models.Transaction
 import java.text.SimpleDateFormat
 import java.util.*
 
-class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.TransactionViewHolder>() {
-    private var transactions: List<Transaction> = emptyList()
+class TransactionAdapter : ListAdapter<Transaction, TransactionAdapter.TransactionViewHolder>(TransactionDiffCallback()) {
 
-    fun setTransactions(newTransactions: List<Transaction>) {
-        transactions = newTransactions
-        notifyDataSetChanged()
+    interface OnItemClickListener {
+        fun onItemClick(transaction: Transaction)
     }
 
-    fun getTransactions(): List<Transaction> {
-        return transactions
+    private var listener: OnItemClickListener? = null
+
+    fun setOnItemClickListener(listener: OnItemClickListener) {
+        this.listener = listener
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionViewHolder {
@@ -30,11 +32,13 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.TransactionVi
     }
 
     override fun onBindViewHolder(holder: TransactionViewHolder, position: Int) {
-        val transaction = transactions[position]
+        val transaction = getItem(position)
         holder.bind(transaction)
-    }
 
-    override fun getItemCount(): Int = transactions.size
+        holder.itemView.setOnClickListener {
+            listener?.onItemClick(transaction)
+        }
+    }
 
     class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val titleTextView: TextView = itemView.findViewById(R.id.transactionTitle)
@@ -45,14 +49,13 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.TransactionVi
 
         fun bind(transaction: Transaction) {
             titleTextView.text = transaction.category
-            
-            // Format amount based on transaction type (positive for income, negative for expense)
+
             val formattedAmount = if (transaction.type == Transaction.Type.INCOME) {
                 "R%.2f".format(transaction.amount)
             } else {
                 "-R%.2f".format(transaction.amount)
             }
-            
+
             amountTextView.text = formattedAmount
             amountTextView.setTextColor(
                 if (transaction.type == Transaction.Type.INCOME)
@@ -60,13 +63,24 @@ class TransactionAdapter : RecyclerView.Adapter<TransactionAdapter.TransactionVi
                 else
                     itemView.context.getColor(android.R.color.holo_red_light)
             )
-            
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+
+            val sdf = SimpleDateFormat("MMM dd,yyyy", Locale.getDefault())
             dateTextView.text = sdf.format(Date(transaction.date))
             descriptionTextView.text = transaction.description
-            
-            // Show receipt indicator if a receipt image is available
+
             receiptIndicator.visibility = if (transaction.receiptImageUri != null) View.VISIBLE else View.GONE
+        }
+    }
+
+    private class TransactionDiffCallback : DiffUtil.ItemCallback<Transaction>() {
+        override fun areItemsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
+            // Assuming id is the local primary key and is stable
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
+            // Data class automatically generates equals(), so this compares all properties
+            return oldItem == newItem
         }
     }
 }
