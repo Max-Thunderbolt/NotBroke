@@ -47,4 +47,14 @@ data class TransactionEntity(
             receiptImageUri = receiptImageUri
         )
     }
+}
+
+/**
+ * Enum representing the sync status of a transaction
+ */
+enum class SyncStatus {
+    SYNCED,           
+    PENDING_UPLOAD,   
+    PENDING_UPDATE,   
+    PENDING_DELETE    
 } 

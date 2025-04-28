@@ -19,7 +19,7 @@ class TransactionAdapter : ListAdapter<Transaction, TransactionAdapter.Transacti
         fun onItemClick(transaction: Transaction)
     }
 
-    private var listener: OnItemClickListener? = null   
+    private var listener: OnItemClickListener? = null
 
     fun setOnItemClickListener(listener: OnItemClickListener) {
         this.listener = listener
@@ -74,10 +74,12 @@ class TransactionAdapter : ListAdapter<Transaction, TransactionAdapter.Transacti
 
     private class TransactionDiffCallback : DiffUtil.ItemCallback<Transaction>() {
         override fun areItemsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
+            // Assuming id is the local primary key and is stable
             return oldItem.id == newItem.id
         }
 
         override fun areContentsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
+            // Data class automatically generates equals(), so this compares all properties
             return oldItem == newItem
         }
     }
