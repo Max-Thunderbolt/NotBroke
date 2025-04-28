@@ -147,11 +147,13 @@ class DebtFragment : Fragment() {
         
         lifecycleScope.launch {
             try {
-                userPreferencesRepository.getUserPreferences(userId).collectLatest { preferences ->
-                    currentStrategy = preferences.selectedDebtStrategy
-                    val spinnerPosition = DebtStrategyType.values().indexOf(currentStrategy)
-                    if (spinnerPosition >= 0) {
-                        strategySpinner.setSelection(spinnerPosition)
+                userPreferencesRepository.observePreferences(userId).collectLatest { preferences ->
+                    preferences?.let {
+                        currentStrategy = it.selectedDebtStrategy
+                        val spinnerPosition = DebtStrategyType.values().indexOf(currentStrategy)
+                        if (spinnerPosition >= 0) {
+                            strategySpinner.setSelection(spinnerPosition)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -221,12 +223,16 @@ class DebtFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val preferences = UserPreferences(userId, strategy)
-                userPreferencesRepository.updatePreferences(preferences)
+                userPreferencesRepository.savePreferences(preferences)
                 
                 // Update strategy description
                 strategyDescriptionTextView.text = when (strategy) {
                     DebtStrategyType.AVALANCHE -> "Pay off debts with the highest interest rates first"
                     DebtStrategyType.SNOWBALL -> "Pay off debts with the smallest balances first"
+                    DebtStrategyType.DEBT_CONSOLIDATION -> "Combine multiple debts into a single loan with a lower interest rate"
+                    DebtStrategyType.HIGHEST_INTEREST_FIRST -> "Similar to Avalanche, focus on highest interest debts first"
+                    DebtStrategyType.BALANCE_PROPORTION -> "Distribute extra payments proportionally based on remaining balances"
+                    DebtStrategyType.DEBT_STACKING -> "Stack payments on one debt at a time until it's paid off"
                 }
                 
                 // Recalculate estimated payoff date

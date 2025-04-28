@@ -6,6 +6,7 @@ import com.example.notbroke.models.UserPreferences
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,7 +39,9 @@ class UserPreferencesRepositoryImpl(
 
     override suspend fun getPreferences(userId: String): Result<UserPreferences> = withContext(Dispatchers.IO) {
         try {
-            val localPreferences = userPreferencesDao.getUserPreferences(userId).map { it?.toUserPreferences() }
+            val localPreferences = userPreferencesDao.getUserPreferences(userId).map { entity -> 
+                entity?.toUserPreferences() 
+            }
             
             val document = preferencesCollection.document(userId).get().await()
             val firestorePreferences = document.toObject(UserPreferences::class.java)
@@ -72,9 +75,13 @@ class UserPreferencesRepositoryImpl(
                     userPreferencesDao.insertUserPreferences(preferencesEntity)
                 }
                 
-                val pendingPreferences = userPreferencesDao.getPendingSyncPreferences().map { it.toUserPreferences() }
+                // Get the list of pending preferences from the Flow
+                val pendingPreferencesList = userPreferencesDao.getPendingSyncPreferences().map { entities ->
+                    entities.map { it.toUserPreferences() }
+                }.first()
                 
-                for (preferences in pendingPreferences) {
+                // Process each pending preference
+                for (preferences in pendingPreferencesList) {
                     try {
                         preferencesCollection.document(preferences.userId).set(preferences).await()
                     } catch (e: Exception) {

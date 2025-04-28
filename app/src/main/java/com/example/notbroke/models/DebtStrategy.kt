@@ -1,5 +1,8 @@
 package com.example.notbroke.models
 
+import java.util.*
+import java.util.Calendar
+
 /**
  * Enum representing different debt payoff strategies
  */
@@ -32,6 +35,33 @@ class DebtStrategy {
             DebtStrategyType.BALANCE_PROPORTION -> applyBalanceProportion(debts)
             DebtStrategyType.DEBT_STACKING -> applyDebtStacking(debts)
         }
+    }
+    
+    /**
+     * Calculate the estimated payoff date based on the current strategy
+     * @param debts List of debts
+     * @param strategyType The type of strategy to use
+     * @return Estimated date when all debts will be paid off
+     */
+    fun calculateEstimatedPayoffDate(debts: List<Debt>, strategyType: DebtStrategyType): Date {
+        if (debts.isEmpty()) {
+            return Date()
+        }
+        
+        // Calculate total monthly payment
+        val totalMonthlyPayment = debts.sumOf { it.monthlyPayment }
+        
+        // Calculate total remaining debt
+        val totalRemainingDebt = debts.sumOf { it.getRemainingBalance() }
+        
+        // Calculate months until payoff (simplified calculation)
+        val monthsUntilPayoff = (totalRemainingDebt / totalMonthlyPayment).toInt()
+        
+        // Create calendar and add months
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.MONTH, monthsUntilPayoff)
+        
+        return calendar.time
     }
     
     /**

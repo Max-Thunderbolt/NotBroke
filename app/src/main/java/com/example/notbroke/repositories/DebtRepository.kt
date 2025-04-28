@@ -6,6 +6,7 @@ import com.example.notbroke.models.Debt
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,7 +67,9 @@ class DebtRepositoryImpl(
 
     override suspend fun getDebt(debtId: String): Result<Debt> = withContext(Dispatchers.IO) {
         try {
-            val localDebt = debtDao.getDebtById(debtId).map { it?.toDebt() }
+            val localDebt = debtDao.getDebtById(debtId).map { entity -> 
+                entity?.toDebt() 
+            }
             
             val document = debtsCollection.document(debtId).get().await()
             val firestoreDebt = document.toObject(Debt::class.java)
@@ -99,9 +102,13 @@ class DebtRepositoryImpl(
                 
                 debtDao.insertDebts(debtEntities)
                 
-                val pendingDebts = debtDao.getPendingSyncDebts().map { it.toDebt() }
+                // Get the list of pending debts from the Flow
+                val pendingDebtsList = debtDao.getPendingSyncDebts().map { entities ->
+                    entities.map { it.toDebt() }
+                }.first()
                 
-                for (debt in pendingDebts) {
+                // Process each pending debt
+                for (debt in pendingDebtsList) {
                     try {
                         debtsCollection.document(debt.id).set(debt).await()
                     } catch (e: Exception) {

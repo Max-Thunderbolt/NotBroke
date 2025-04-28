@@ -6,9 +6,11 @@ import com.example.notbroke.models.UserPreferences
 import com.example.notbroke.models.Transaction
 import com.example.notbroke.models.Reward
 import com.example.notbroke.models.NetWorthEntry
+import com.example.notbroke.models.UserProfile
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.ktx.auth
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -24,6 +26,83 @@ class FirestoreService {
     private val transactionsCollection = db.collection("transactions")
     private val rewardsCollection = db.collection("rewards")
     private val netWorthCollection = db.collection("netWorth")
+    private val userProfilesCollection = db.collection("userProfiles")
+    
+    // User Profile Methods
+    suspend fun saveUserProfile(userId: String, username: String, email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val userProfile = UserProfile(
+                userId = userId,
+                username = username,
+                email = email
+            )
+            
+            userProfilesCollection.document(userId)
+                .set(userProfile)
+                .await()
+                
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateUserProfile(userId: String, username: String, email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val userProfile = UserProfile(
+                userId = userId,
+                username = username,
+                email = email
+            )
+            
+            userProfilesCollection.document(userId)
+                .set(userProfile)
+                .await()
+                
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun deleteUserProfile(userId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            userProfilesCollection.document(userId)
+                .delete()
+                .await()
+                
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getUserProfile(userId: String): UserProfile = withContext(Dispatchers.IO) {
+        try {
+            val doc = userProfilesCollection.document(userId).get().await()
+            
+            if (doc.exists()) {
+                val userProfile = doc.toObject(UserProfile::class.java)
+                if (userProfile != null) {
+                    return@withContext userProfile
+                }
+            }
+            
+            // Return default profile if not found
+            UserProfile(
+                userId = userId,
+                username = "User",
+                email = ""
+            )
+        } catch (e: Exception) {
+            // Return default profile on error
+            UserProfile(
+                userId = userId,
+                username = "User",
+                email = ""
+            )
+        }
+    }
     
     // Get user preferences
     suspend fun getUserPreferences(userId: String): Result<UserPreferences> = withContext(Dispatchers.IO) {
@@ -365,7 +444,7 @@ class FirestoreService {
     // Debt Methods
     suspend fun saveDebtToFirestore(debt: Debt): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val documentRef = debtsCollection.document(debt.id)
+            val documentRef = debtsCollection.document(debt.id ?: "")
             documentRef.set(debt).await()
             Result.success(documentRef.id)
         } catch (e: Exception) {
@@ -375,7 +454,7 @@ class FirestoreService {
 
     suspend fun updateDebtInFirestore(debt: Debt): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            debtsCollection.document(debt.id)
+            debtsCollection.document(debt.id ?: "")
                 .set(debt)
                 .await()
             Result.success(Unit)
@@ -432,8 +511,9 @@ class FirestoreService {
     // Net Worth Methods
     suspend fun saveNetWorthEntryToFirestore(entry: NetWorthEntry): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val documentRef = netWorthCollection.document(entry.id)
-            documentRef.set(entry).await()
+            val documentRef = netWorthCollection.document()
+            val entryWithId = entry.copy(id = documentRef.id)
+            documentRef.set(entryWithId).await()
             Result.success(documentRef.id)
         } catch (e: Exception) {
             Result.failure(e)
