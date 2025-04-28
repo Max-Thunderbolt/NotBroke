@@ -67,7 +67,7 @@ class NetWorthFragment : Fragment() {
         val datePicker = MaterialDatePicker.Builder.datePicker()
             .setTitleText("Select Date")
             .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
-            .setTheme(R.style.ThemeOverlay_MaterialComponents_MaterialCalendar)
+            .setTheme(com.google.android.material.R.style.ThemeOverlay_MaterialComponents_MaterialCalendar)
             .build()
 
         datePicker.addOnPositiveButtonClickListener { selection ->
@@ -87,7 +87,10 @@ class NetWorthFragment : Fragment() {
         }
 
         val userId = authService.getCurrentUserId() ?: return
-        val entry = NetWorthEntry(amount, selectedDate!!)
+        val entry = NetWorthEntry(
+            amount = amount,
+            date = selectedDate!!
+        )
 
         lifecycleScope.launch {
             try {

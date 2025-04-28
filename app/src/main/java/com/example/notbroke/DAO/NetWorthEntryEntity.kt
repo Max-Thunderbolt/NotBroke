@@ -19,12 +19,18 @@ data class NetWorthEntryEntity(
 ) {
     // Convert from NetWorthEntry model to NetWorthEntryEntity
     companion object {
-        fun fromNetWorthEntry(entry: NetWorthEntry, userId: String, id: String): NetWorthEntryEntity {
+        fun fromNetWorthEntry(
+            entry: NetWorthEntry, 
+            userId: String, 
+            id: String,
+            syncStatus: SyncStatus = SyncStatus.SYNCED
+        ): NetWorthEntryEntity {
             return NetWorthEntryEntity(
                 id = id,
                 userId = userId,
                 amount = entry.amount,
-                date = entry.date.time
+                date = entry.date.time,
+                syncStatus = syncStatus
             )
         }
     }
@@ -32,6 +38,8 @@ data class NetWorthEntryEntity(
     // Convert from NetWorthEntryEntity to NetWorthEntry model
     fun toNetWorthEntry(): NetWorthEntry {
         return NetWorthEntry(
+            id = id,
+            userId = userId,
             amount = amount,
             date = Date(date)
         )

@@ -5,14 +5,15 @@ import com.example.notbroke.DAO.RewardEntity
 import com.example.notbroke.models.Reward
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface RewardRepository {
-    suspend fun addReward(reward: Reward): Result<Reward>
-    suspend fun updateReward(reward: Reward): Result<Reward>
+    suspend fun addReward(reward: Reward, userId: String): Result<Reward>
+    suspend fun updateReward(reward: Reward, userId: String): Result<Reward>
     suspend fun deleteReward(rewardId: String): Result<Unit>
     suspend fun getReward(rewardId: String): Result<Reward>
     fun getAllRewards(userId: String): Flow<List<Reward>>
@@ -25,13 +26,13 @@ class RewardRepositoryImpl(
 ) : RewardRepository {
     private val rewardsCollection = firestore.collection("rewards")
 
-    override suspend fun addReward(reward: Reward): Result<Reward> = withContext(Dispatchers.IO) {
-            try {
+    override suspend fun addReward(reward: Reward, userId: String): Result<Reward> = withContext(Dispatchers.IO) {
+        try {
             val documentRef = rewardsCollection.document()
             val rewardWithId = reward.copy(id = documentRef.id.toIntOrNull() ?: 0)
             documentRef.set(rewardWithId).await()
             
-            val rewardEntity = RewardEntity.fromReward(rewardWithId, userId = "")
+            val rewardEntity = RewardEntity.fromReward(rewardWithId, userId = userId)
             rewardDao.insertReward(rewardEntity)
             
             Result.success(rewardWithId)
@@ -40,11 +41,11 @@ class RewardRepositoryImpl(
         }
     }
 
-    override suspend fun updateReward(reward: Reward): Result<Reward> = withContext(Dispatchers.IO) {
+    override suspend fun updateReward(reward: Reward, userId: String): Result<Reward> = withContext(Dispatchers.IO) {
         try {
             rewardsCollection.document(reward.id.toString()).set(reward).await()
             
-            val rewardEntity = RewardEntity.fromReward(reward, userId = "")
+            val rewardEntity = RewardEntity.fromReward(reward, userId = userId)
             rewardDao.updateReward(rewardEntity)
             
             Result.success(reward)
@@ -67,13 +68,20 @@ class RewardRepositoryImpl(
 
     override suspend fun getReward(rewardId: String): Result<Reward> = withContext(Dispatchers.IO) {
         try {
-            val localReward = rewardDao.getRewardById(rewardId).map { it?.toReward() }
+            // First try to get from local database
+            val localReward = rewardDao.getRewardById(rewardId).first()?.toReward()
+            if (localReward != null) {
+                return@withContext Result.success(localReward)
+            }
             
+            // If not found locally, try Firestore
             val document = rewardsCollection.document(rewardId).get().await()
             val firestoreReward = document.toObject(Reward::class.java)
             
             if (firestoreReward != null) {
-                val rewardEntity = RewardEntity.fromReward(firestoreReward, userId = "")
+                // Get the userId from the document
+                val userId = document.getString("userId") ?: ""
+                val rewardEntity = RewardEntity.fromReward(firestoreReward, userId = userId)
                 rewardDao.insertReward(rewardEntity)
                 Result.success(firestoreReward)
             } else {
@@ -100,11 +108,11 @@ class RewardRepositoryImpl(
                 
                 rewardDao.insertRewards(rewardEntities)
                 
-                val pendingRewards = rewardDao.getPendingSyncRewards().map { it.toReward() }
+                val pendingRewards = rewardDao.getPendingSyncRewards().first()
                 
                 for (reward in pendingRewards) {
                     try {
-                        rewardsCollection.document(reward.id.toString()).set(reward).await()
+                        rewardsCollection.document(reward.id).set(reward.toReward()).await()
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
