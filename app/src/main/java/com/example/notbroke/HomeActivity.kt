@@ -115,7 +115,8 @@ class HomeActivity : AppCompatActivity() {
 
             habitsMenuItem.setOnClickListener {
                 showToast("Habits selected")
-                loadFragment(HabitsFragment.newInstance())
+                loadFragment(HabitsFragment()
+                )
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
 
