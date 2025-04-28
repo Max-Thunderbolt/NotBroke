@@ -37,7 +37,7 @@ class HabitsFragment : Fragment() {
     private lateinit var btnAddTestTransaction: Button
     
     private lateinit var repositoryFactory: RepositoryFactory
-    private val transactionRepository by lazy { repositoryFactory.transactionRepository }
+    private val transactionRepository by lazy { repositoryFactory.getTransactionRepository() }
     private val authService = AuthService.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
