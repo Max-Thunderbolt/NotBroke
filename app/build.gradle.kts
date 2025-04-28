@@ -67,10 +67,14 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     
-    // Room dependencies
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    // Room dependencies with updated versions
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
+    
+    // Kotlin metadata dependency
+    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
     
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:32.7.2"))

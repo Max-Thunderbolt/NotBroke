@@ -15,6 +15,7 @@ import com.example.notbroke.adapters.NetWorthAdapter
 import com.example.notbroke.models.NetWorthEntry
 import com.example.notbroke.repositories.RepositoryFactory
 import com.example.notbroke.services.AuthService
+import com.google.android.material.datepicker.MaterialDatePicker
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -63,21 +64,19 @@ class NetWorthFragment : Fragment() {
     }
 
     private fun openDatePicker() {
-        val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
+        val datePicker = MaterialDatePicker.Builder.datePicker()
+            .setTitleText("Select Date")
+            .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+            .setTheme(R.style.ThemeOverlay_MaterialComponents_MaterialCalendar)
+            .build()
 
-        val datePickerDialog = DatePickerDialog(requireContext(), { _, selectedYear, selectedMonth, selectedDay ->
-            calendar.set(Calendar.YEAR, selectedYear)
-            calendar.set(Calendar.MONTH, selectedMonth)
-            calendar.set(Calendar.DAY_OF_MONTH, selectedDay)
-            selectedDate = calendar.time
+        datePicker.addOnPositiveButtonClickListener { selection ->
+            selectedDate = Date(selection)
             val formatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(selectedDate!!)
             addDateButton.text = formatted
-        }, year, month, day)
+        }
 
-        datePickerDialog.show()
+        datePicker.show(parentFragmentManager, "DATE_PICKER")
     }
 
     private fun addNetWorthEntry() {
