@@ -52,6 +52,30 @@
             android:textColorHint="#FFFFFF"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/categoryInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:hintTextColor="#FFFFFF"
+        app:boxStrokeColor="@color/gold"
+        android:popupBackground="#1E1E1E"
+        app:boxBackgroundColor="#2D2D2D"
+        style="@style/AppTheme.DropdownStyle">
+
+        <AutoCompleteTextView
+            android:id="@+id/categoryAutoComplete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Category"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FFFFFF"
+            android:popupBackground="#1E1E1E"
+            style="@style/AppTheme.DropdownTextStyle"
+            android:inputType="none"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+
     <!-- Receipt Image Upload Section -->
     <LinearLayout
         android:layout_width="match_parent"

@@ -80,6 +80,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private lateinit var balanceTextView: TextView
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
+    private lateinit var addCategoryButton: MaterialButton
 
     // ===== Keep existing Receipt image handling =====
     private var currentPhotoPath: String? = null
@@ -167,6 +168,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             balanceTextView = view.findViewById(R.id.balanceTextView)
             balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
             balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
+            addCategoryButton = view.findViewById(R.id.addCategoryButton)
             Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing views", e)
@@ -387,6 +389,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
         }
+        addCategoryButton.setOnClickListener {
+            showAddCategoryDialog()
+        }
     }
 
 
@@ -458,7 +463,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             Log.d(TAG, "Add Transaction Dialog: Add button clicked.")
             val amountStr = amountEditText.text.toString().trim()
             val description = descriptionEditText.text.toString().trim()
+            val category = categoryAutoComplete?.text?.toString()?.trim() ?: ""
             val date = System.currentTimeMillis()
+
 
             // Validation
             if (amountStr.isBlank() || description.isBlank()) {
