@@ -59,6 +59,10 @@ import com.google.firebase.firestore.QuerySnapshot // Add for Firestore results
 import kotlinx.coroutines.launch // Add for Coroutines
 import kotlinx.coroutines.tasks.await // Add for Coroutines + Tasks API
 import java.util.* // Add for Calendar
+import com.example.notbroke.repositories.RepositoryFactory
+import com.example.notbroke.repositories.TransactionRepository
+import com.example.notbroke.services.FirestoreService
+import com.example.notbroke.services.AuthService
 
 // *** MODIFIED: Implement TransactionAdapter.OnItemClickListener ***
 class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
@@ -85,9 +89,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private var currentDialog: Dialog? = null
 
-    // ===== Add Firebase instances =====
-    private lateinit var db: FirebaseFirestore
-    private lateinit var auth: FirebaseAuth
+    // ===== Replace Firebase instances with Repository =====
+    private lateinit var repositoryFactory: RepositoryFactory
+    private val transactionRepository by lazy { 
+        TransactionRepository(
+            repositoryFactory.database.transactionDao(),
+            FirestoreService.getInstance()
+        )
+    }
+    private val authService = AuthService.getInstance()
 
     // Store the current date range for navigation
     private var currentStartDate: Long = 0L
@@ -96,16 +106,8 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initializeActivityResultLaunchers() 
-        // Initialize Firebase
-        try {
-            db = FirebaseFirestore.getInstance()
-            auth = FirebaseAuth.getInstance()
-            Log.d(TAG, "onCreate: Initialized Firebase Auth and Firestore")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Firebase", e)
-            showToast("Failed to initialize core services. Please restart the app.")
-            // Consider preventing fragment load if Firebase fails
-        }
+        // Initialize Repository Factory
+        repositoryFactory = RepositoryFactory.getInstance(requireContext())
     }
 
     override fun onCreateView(
@@ -138,6 +140,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             setupPieChart()
             setupChartListener()
             setupPeriodSpinner() 
+
+            // Replace loadTransactions() call with observeTransactions()
+            observeTransactions()
 
             Log.d(TAG, "onViewCreated: Setup complete.")
 
@@ -483,7 +488,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             )
 
             Log.d(TAG, "Attempting to save transaction: $transaction")
-            saveTransactionToFirestore(transaction) // Save to Firestore
+            addTransaction(transaction) // Save to Firestore
 
             dialog.dismiss()
             currentDialog = null
@@ -580,7 +585,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         deleteButton.setOnClickListener {
             Log.d(TAG, "Edit Transaction Dialog: Delete clicked for ID: ${transaction.firestoreId}")
             // *** ADDED: Implement Delete functionality ***
-            deleteTransactionFromFirestore(transaction.firestoreId)
+            deleteTransaction(transaction)
             dialog.dismiss()
             currentDialog = null
         }
@@ -617,7 +622,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             )
 
             // *** ADDED: Call function to update in Firestore ***
-            updateTransactionInFirestore(updatedTransaction)
+            updateTransaction(updatedTransaction)
 
             dialog.dismiss()
             currentDialog = null
@@ -840,241 +845,68 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     //              Firestore & Data Handling Methods
     // ==========================================================
 
-    private fun saveTransactionToFirestore(transaction: Transaction) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "saveTransactionToFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
+    private fun addTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.saveTransaction(transaction)
+                Toast.makeText(context, "Transaction added successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
-        Log.d(TAG, "saveTransactionToFirestore: Saving transaction for user $userId")
-
-        val transactionData = mapOf(
-            "amount" to transaction.amount,
-            "type" to transaction.type.name,
-            "description" to transaction.description,
-            "category" to transaction.category,
-            "date" to com.google.firebase.firestore.FieldValue.serverTimestamp(), // Use server time
-            "receiptImageUri" to transaction.receiptImageUri // Store as String or null
-        )
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .add(transactionData) 
-            .addOnSuccessListener { documentReference ->
-                Log.i(TAG, "saveTransactionToFirestore: Success! Document ID: ${documentReference.id}")
-                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} added")
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "saveTransactionToFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "saveTransactionToFirestore: Error adding transaction", e)
-                showToast("Error saving transaction: ${e.localizedMessage}")
-            }
     }
 
-    private fun updateTransactionInFirestore(transaction: Transaction) {
-        val userId = auth.currentUser?.uid
-        val transactionId = transaction.firestoreId
-
-        if (userId == null) {
-            Log.w(TAG, "updateTransactionInFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
-        }
-        if (transactionId == null) {
-            Log.e(TAG, "updateTransactionInFirestore: Transaction Firestore ID is null. Cannot update.")
-            showToast("Error: Cannot update transaction (missing ID)")
-            return
-        }
-        Log.d(TAG, "updateTransactionInFirestore: Updating transaction $transactionId for user $userId")
-
-        val updatedData = mapOf(
-            "amount" to transaction.amount,
-            "description" to transaction.description,
-            "category" to transaction.category
-        )
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .document(transactionId) 
-            .update(updatedData)
-            .addOnSuccessListener {
-                Log.i(TAG, "updateTransactionInFirestore: Success! Document $transactionId updated.")
-                showToast("${transaction.type.name.lowercase().replaceFirstChar { it.uppercase() }} updated")
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "updateTransactionInFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
+    private fun updateTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.updateTransaction(transaction)
+                Toast.makeText(context, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "updateTransactionInFirestore: Error updating transaction $transactionId", e)
-                showToast("Error updating transaction: ${e.localizedMessage}")
-            }
+        }
     }
 
-Function to delete a transaction from Firestore ***
-    private fun deleteTransactionFromFirestore(transactionId: String?) {
-        val userId = auth.currentUser?.uid
-
-        if (userId == null) {
-            Log.w(TAG, "deleteTransactionFromFirestore: User not logged in.")
-            showToast("Error: Not logged in")
-            return
-        }
-        if (transactionId == null) {
-            Log.e(TAG, "deleteTransactionFromFirestore: Transaction Firestore ID is null. Cannot delete.")
-            showToast("Error: Cannot delete transaction (missing ID)")
-            return
-        }
-        Log.d(TAG, "deleteTransactionFromFirestore: Deleting transaction $transactionId for user $userId")
-
-        db.collection("users").document(userId)
-            .collection("transactions")
-            .document(transactionId) 
-            .delete()
-            .addOnSuccessListener {
-                Log.i(TAG, "deleteTransactionFromFirestore: Success! Document $transactionId deleted.")
-                showToast("Transaction deleted")
-                val selectedPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-                Log.d(TAG, "deleteTransactionFromFirestore: Refreshing data for period '$selectedPeriod'.")
-                loadTransactionsForPeriod(selectedPeriod)
+    private fun deleteTransaction(transaction: Transaction) {
+        lifecycleScope.launch {
+            try {
+                transactionRepository.deleteTransaction(transaction)
+                Toast.makeText(context, "Transaction deleted successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "deleteTransactionFromFirestore: Error deleting transaction $transactionId", e)
-                showToast("Error deleting transaction: ${e.localizedMessage}")
-            }
+        }
     }
-
 
     private fun loadTransactionsForPeriod(period: String) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.w(TAG, "loadTransactionsForPeriod: User not logged in.")
-            clearUiData()
-            return
-        }
-
-        val (startDate, endDate) = getDateRangeForPeriod(period)
-        if (startDate == null || endDate == null) {
-            Log.e(TAG, "loadTransactionsForPeriod: Invalid date range for period '$period'. Cannot load.")
-            clearUiData()
-            return
-        }
-
-        Log.i(TAG, "loadTransactionsForPeriod: Loading for '$period' (User: $userId, Start: ${Date(startDate)}, End: ${Date(endDate)})")
-
-        viewLifecycleOwner.lifecycleScope.launch { 
-            try {
-                // Convert Long dates to Firestore Timestamp for querying
-                val startTimestamp = com.google.firebase.Timestamp(startDate / 1000, (startDate % 1000 * 1000000).toInt())
-                val endTimestamp = com.google.firebase.Timestamp(endDate / 1000, (endDate % 1000 * 1000000).toInt())
-
-                val querySnapshot = db.collection("users").document(userId)
-                    .collection("transactions")
-                    .whereGreaterThanOrEqualTo("date", startTimestamp) 
-                    .whereLessThanOrEqualTo("date", endTimestamp)     
-                    .get()
-                    .await() 
-
-                Log.d(TAG, "loadTransactionsForPeriod: Firestore fetch successful, ${querySnapshot.size()} documents.")
-                processFirestoreResults(querySnapshot)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "loadTransactionsForPeriod: Error fetching from Firestore", e)
-                showToast("Error loading transactions: ${e.localizedMessage}")
-                clearUiData()
-            } finally {
-                // Hide loading indicator
+        val userId = authService.getCurrentUserId() ?: return
+        
+        lifecycleScope.launch {
+            transactionRepository.allTransactions.collectLatest { transactions ->
+                // Filter transactions by date range if needed
+                val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactions.filter { 
+                        it.date in currentStartDate..currentEndDate 
+                    }
+                } else {
+                    transactions
+                }
+                
+                // Update adapter with filtered transactions
+                transactionAdapter.submitList(filteredTransactions)
+                
+                // Update UI with transaction data
+                updateTransactionSummary(filteredTransactions)
+                updatePieChart(filteredTransactions)
             }
         }
     }
 
-    private fun processFirestoreResults(snapshot: QuerySnapshot) {
-        Log.d(TAG, "processFirestoreResults: Processing ${snapshot.size()} documents.")
-        val transactions = snapshot.documents.mapNotNull { doc ->
-            try {
-                val data = doc.data ?: return@mapNotNull null // Skip if data is null
-
-                val typeString = data["type"] as? String
-                val transactionType = try {
-                    if (typeString != null) Transaction.Type.valueOf(typeString) else Transaction.Type.EXPENSE
-                } catch (e: IllegalArgumentException) {
-                    Log.w(TAG, "Invalid type '$typeString' in doc ${doc.id}, defaulting to EXPENSE.")
-                    Transaction.Type.EXPENSE
-                }
-
-                // Handle Firestore Timestamp for date
-                val firestoreTimestamp = data["date"] as? com.google.firebase.Timestamp
-                val dateMillis = firestoreTimestamp?.toDate()?.time ?: run {
-                    // Fallback if date is stored as Long (should be avoided)
-                    Log.w(TAG,"Date field in doc ${doc.id} is not a Timestamp, trying Long.")
-                    (data["date"] as? Long) ?: 0L
-                }
-                if (dateMillis == 0L) {
-                    Log.w(TAG,"Could not parse date for doc ${doc.id}, skipping.")
-                    return@mapNotNull null // Skip if date is invalid
-                }
-
-                Transaction(
-                    id = doc.id.hashCode().toLong(), // Local ID (can keep or remove if not used elsewhere)
-                    firestoreId = doc.id, // *** ADDED: Store Firestore ID ***
-                    type = transactionType,
-                    amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
-                    description = data["description"] as? String ?: "",
-                    category = data["category"] as? String ?: "Uncategorized",
-                    date = dateMillis, // Use parsed milliseconds
-                    receiptImageUri = data["receiptImageUri"] as? String // Nullable
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error mapping document ${doc.id}", e)
-                null // Skip documents that fail mapping
-            }
-        }.sortedByDescending { it.date } // Sort by date descending
-
-        Log.i(TAG, "processFirestoreResults: Mapped ${transactions.size} transactions successfully.")
-
-        // Update UI on the main thread safely
-        activity?.runOnUiThread {
-            if (!isAdded) {
-                Log.w(TAG, "processFirestoreResults: Fragment not attached, skipping UI update.")
-                return@runOnUiThread
-            }
-
-            Log.d(TAG, "Updating UI: RecyclerView, Balance, PieChart")
-            transactionAdapter.setTransactions(transactions)
-            updateBalance(transactions)
-
-            val expenseTransactions = transactions.filter { it.type == Transaction.Type.EXPENSE }
-            val expenseCategoryTotals = calculateCategoryTotals(expenseTransactions)
-            updatePieChart(expenseCategoryTotals)
-
-            // Update Budget Summary Texts (Placeholders)
-            val totalSpent = expenseCategoryTotals.values.sum()
-            totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
-            totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
-            remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
-
-            Log.d(TAG, "UI Update complete.")
-        }
-    }
-
-
-    private fun calculateCategoryTotals(expenseTransactions: List<Transaction>): Map<String, Double> {
-        Log.d(TAG, "calculateCategoryTotals: Calculating for ${expenseTransactions.size} expenses.")
-        if (expenseTransactions.isEmpty()) return emptyMap()
-
-        // Group by category, sum amounts, filter zero totals, and sort
-        val totals = expenseTransactions
-            .groupBy { it.category.trim().ifBlank { "Uncategorized" } } // Trim and handle blank categories
-            .mapValues { (_, transactionsInCategory) ->
-                transactionsInCategory.sumOf { it.amount }
-            }
-            .filterValues { it > 0 } // Only include categories with spending > 0
-            .toSortedMap() // Sort categories alphabetically
-
-        Log.d(TAG, "calculateCategoryTotals: Calculated totals for ${totals.size} categories.")
-        return totals
+    private fun updateTransactionSummary(transactions: List<Transaction>) {
+        updateBalance(transactions)
+        totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", transactions.sumOf { it.amount })
+        totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget
+        remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget
     }
 
     private fun getDateRangeForPeriod(period: String): Pair<Long?, Long?> {
@@ -1195,12 +1027,36 @@ Function to delete a transaction from Firestore ***
         // Use runOnUiThread safely checking fragment attachment
         activity?.runOnUiThread {
             if (!isAdded) return@runOnUiThread
-            transactionAdapter.setTransactions(emptyList())
+            transactionAdapter.submitList(emptyList())
             updatePieChart(emptyMap()) // This will handle clearing the chart
             updateBalance(emptyList())
             totalSpentTextView.text = "R 0.00"
             totalBudgetTextView.text = "R ----.--"
             remainingTextView.text = "R ----.--"
+        }
+    }
+
+    private fun observeTransactions() {
+        val userId = authService.getCurrentUserId() ?: return
+        
+        lifecycleScope.launch {
+            transactionRepository.allTransactions.collectLatest { transactions ->
+                // Filter transactions by date range if needed
+                val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactions.filter { 
+                        it.date in currentStartDate..currentEndDate 
+                    }
+                } else {
+                    transactions
+                }
+                
+                // Update adapter with filtered transactions
+                transactionAdapter.submitList(filteredTransactions)
+                
+                // Update UI with transaction data
+                updateTransactionSummary(filteredTransactions)
+                updatePieChart(filteredTransactions)
+            }
         }
     }
 
