@@ -13,8 +13,10 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
-    fun getAllTransactions(): Flow<List<TransactionEntity>>
+    // *** FIX for deletion not immediately updating UI ***
+    // Filter out transactions marked as PENDING_DELETE
+    @Query("SELECT * FROM transactions WHERE syncStatus != :pendingDeleteStatus ORDER BY date DESC")
+    fun getAllTransactions(pendingDeleteStatus: SyncStatus = SyncStatus.PENDING_DELETE): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE id = :transactionId")
     fun getTransactionById(transactionId: String): Flow<TransactionEntity?>
@@ -40,6 +42,7 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :transactionId")
     suspend fun deleteTransactionById(transactionId: String)
 
+    // Query to get transactions that need syncing (not SYNCED)
     @Query("SELECT * FROM transactions WHERE syncStatus != :status")
     fun getPendingSyncTransactions(status: SyncStatus = SyncStatus.SYNCED): Flow<List<TransactionEntity>>
 
