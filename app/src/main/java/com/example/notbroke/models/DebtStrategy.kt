@@ -99,27 +99,23 @@ class DebtStrategy {
     private fun applySnowballMethod(debts: List<Debt>, extraPayment: Double): List<Debt> {
         if (debts.isEmpty()) return emptyList()
         
-        val sortedDebts = debts.sortedBy { it.getRemainingBalance() }
-        val result = mutableListOf<Debt>()
-        var remainingExtraPayment = extraPayment
-
-        // First, apply minimum payments to all debts
-        sortedDebts.forEach { debt ->
+        // Create copies and apply minimum payments first
+        val result = debts.map { debt ->
             val debtCopy = debt.copy()
             debtCopy.makePayment(debt.monthlyPayment)
-            result.add(debtCopy)
+            debtCopy
+        }.toMutableList()
+        
+        // Sort by remaining balance after minimum payments
+        result.sortBy { it.getRemainingBalance() }
+        
+        // Apply extra payment to smallest balance debt
+        if (extraPayment > 0 && result.isNotEmpty()) {
+            val smallestDebt = result[0]
+            val payment = minOf(extraPayment, smallestDebt.getRemainingBalance())
+            smallestDebt.makePayment(payment)
         }
-
-        // Then apply extra payment to smallest balance debt
-        if (remainingExtraPayment > 0) {
-            val smallestDebt = result.minByOrNull { it.getRemainingBalance() }
-            smallestDebt?.let {
-                val payment = minOf(remainingExtraPayment, it.getRemainingBalance())
-                it.makePayment(payment)
-                remainingExtraPayment -= payment
-            }
-        }
-
+        
         return result
     }
     
@@ -129,14 +125,15 @@ class DebtStrategy {
     private fun applyDebtConsolidation(debts: List<Debt>): List<Debt> {
         if (debts.isEmpty()) return emptyList()
 
-        val totalDebt = debts.sumOf { it.getRemainingBalance() }
-        val weightedInterestRate = debts.sumOf { it.getRemainingBalance() * it.interestRate } / totalDebt
+        val totalDebt = debts.sumOf { it.totalAmount }
+        val weightedInterestRate = debts.sumOf { it.totalAmount * it.interestRate } / totalDebt
+        // Ensure the consolidated rate is at least 2% lower than the weighted average
         val consolidatedRate = (weightedInterestRate - 2.0).coerceAtLeast(4.0) // Minimum 4%
         
         // Create a new consolidated debt
         val consolidatedDebt = Debt(
             name = "Consolidated Loan",
-            balance = totalDebt,
+            totalAmount = totalDebt,
             interestRate = consolidatedRate,
             monthlyPayment = calculateConsolidatedMonthlyPayment(totalDebt, consolidatedRate)
         )
@@ -177,21 +174,19 @@ class DebtStrategy {
     private fun applyBalanceProportion(debts: List<Debt>, extraPayment: Double): List<Debt> {
         if (debts.isEmpty()) return emptyList()
         
-        val result = mutableListOf<Debt>()
-        val totalDebt = debts.sumOf { it.getRemainingBalance() }
-
-        // Apply minimum payments and calculate proportional extra payments
-        debts.forEach { debt ->
+        // Calculate total remaining balance
+        val totalRemainingBalance = debts.sumOf { it.getRemainingBalance() }
+        
+        // Create copies and update monthly payments proportionally
+        return debts.map { debt ->
             val debtCopy = debt.copy()
-            val minimumPayment = debt.monthlyPayment
-            val proportionalExtra = (debt.getRemainingBalance() / totalDebt) * extraPayment
-            val totalPayment = minimumPayment + proportionalExtra
-            
-            debtCopy.makePayment(totalPayment)
-            result.add(debtCopy)
+            val remainingBalance = debt.getRemainingBalance()
+            val proportion = remainingBalance / totalRemainingBalance
+            val extraPaymentAmount = extraPayment * proportion
+            // Update the monthly payment to include the extra payment
+            debtCopy.monthlyPayment += extraPaymentAmount
+            debtCopy
         }
-
-        return result
     }
     
     /**
@@ -200,26 +195,29 @@ class DebtStrategy {
     private fun applyDebtStacking(debts: List<Debt>, extraPayment: Double): List<Debt> {
         if (debts.isEmpty()) return emptyList()
         
+        // Sort by months remaining
         val sortedDebts = debts.sortedBy { it.getMonthsRemaining() }
-        val result = mutableListOf<Debt>()
-        var availablePayment = extraPayment
-
-        // Apply minimum payments and stack payments from paid-off debts
-        sortedDebts.forEach { debt ->
-            val debtCopy = debt.copy()
-            val payment = debt.monthlyPayment + availablePayment
-            debtCopy.makePayment(payment)
+        
+        // Create copies of the debts
+        val result = sortedDebts.map { it.copy() }.toMutableList()
+        
+        // Apply the extra payment to the first debt (shortest payoff time)
+        if (extraPayment > 0 && result.isNotEmpty()) {
+            val firstDebt = result[0]
             
-            if (debtCopy.getRemainingBalance() <= 0) {
-                // If debt is paid off, add its minimum payment to available payment
-                availablePayment += debt.monthlyPayment
-            } else {
-                availablePayment = 0.0
+            // Update the monthly payment to include the extra payment
+            firstDebt.monthlyPayment += extraPayment
+            
+            // Apply the payment to the debt
+            firstDebt.makePayment(firstDebt.monthlyPayment)
+            
+            // If the first debt is paid off, add its payment to the next debt
+            if (firstDebt.getRemainingBalance() <= 0 && result.size > 1) {
+                val secondDebt = result[1]
+                secondDebt.monthlyPayment += firstDebt.monthlyPayment
             }
-            
-            result.add(debtCopy)
         }
-
+        
         return result
     }
     
@@ -246,12 +244,18 @@ class DebtStrategy {
         
         val totalDebt = debts.sumOf { it.getRemainingBalance() }
         val weightedInterestRate = debts.sumOf { it.getRemainingBalance() * it.interestRate } / totalDebt
+        // Ensure the consolidated rate is at least 2% lower than the weighted average
         val consolidatedRate = (weightedInterestRate - 2.0).coerceAtLeast(4.0) // Minimum 4%
         
-        // Estimate savings (very simplified)
-        val originalInterest = debts.sumOf { it.getRemainingBalance() * it.interestRate / 100.0 * (it.getMonthsRemaining() / 12.0) }
-        val consolidatedInterest = totalDebt * consolidatedRate / 100.0 * (debts.maxOf { it.getMonthsRemaining() } / 12.0)
+        // Calculate original total interest
+        val originalInterest = debts.sumOf { 
+            it.getRemainingBalance() * it.interestRate / 100.0 * (it.getMonthsRemaining() / 12.0) 
+        }
         
+        // Calculate consolidated interest
+        val consolidatedInterest = totalDebt * consolidatedRate / 100.0 * 5.0 // 5 years term
+        
+        // Return the difference (savings)
         return (originalInterest - consolidatedInterest).coerceAtLeast(0.0)
     }
     

@@ -37,7 +37,88 @@ class DebtStrategyTest {
     fun `test applyStrategy snowball`() {
         val result = strategy.applyStrategy(debts, DebtStrategyType.SNOWBALL)
         assertEquals(3, result.size)
-        assertEquals("Loan1", result[0].name) // Smallest balance first
+        
+        // Find the debt with smallest remaining balance
+        val smallestDebt = debts.minByOrNull { it.totalAmount - it.amountPaid }
+        assertEquals("Smallest remaining balance debt should be first", 
+            smallestDebt?.name, result[0].name)
+    }
+
+    @Test
+    fun `test applyStrategy snowball with extra payment`() {
+        val extraPayment = 500.0
+        val result = strategy.applyStrategy(debts, DebtStrategyType.SNOWBALL, extraPayment)
+        assertEquals(3, result.size)
+        
+        // Find the debt with smallest remaining balance
+        val smallestDebt = debts.minByOrNull { it.totalAmount - it.amountPaid }
+        assertEquals("Smallest remaining balance debt should be first", 
+            smallestDebt?.name, result[0].name)
+            
+        // Calculate expected remaining balance
+        val initialRemaining = smallestDebt?.totalAmount?.minus(smallestDebt.amountPaid) ?: 0.0
+        val totalPayment = (smallestDebt?.monthlyPayment ?: 0.0) + extraPayment
+        val expectedRemaining = (initialRemaining - totalPayment).coerceAtLeast(0.0)
+        
+        assertEquals("Extra payment should be applied to smallest debt", 
+            expectedRemaining, result[0].getRemainingBalance(), 0.01)
+    }
+
+    @Test
+    fun `test applyStrategy avalanche with extra payment`() {
+        val extraPayment = 500.0
+        val result = strategy.applyStrategy(debts, DebtStrategyType.AVALANCHE, extraPayment)
+        assertEquals(3, result.size)
+        // Loan3 should be first as it has highest interest
+        assertEquals("Loan3", result[0].name)
+        // Verify extra payment was applied to highest interest debt
+        assertTrue(result[0].getRemainingBalance() < 500.0)
+    }
+
+    @Test
+    fun `test applyStrategy debt consolidation`() {
+        val result = strategy.applyStrategy(debts, DebtStrategyType.DEBT_CONSOLIDATION)
+        assertEquals(1, result.size)
+        assertEquals("Consolidated Loan", result[0].name)
+        // Verify total amount matches sum of original debts
+        assertEquals(4500.0, result[0].totalAmount, 0.01)
+    }
+
+    @Test
+    fun `test applyStrategy highest interest first`() {
+        val result = strategy.applyStrategy(debts, DebtStrategyType.HIGHEST_INTEREST_FIRST)
+        assertEquals(3, result.size)
+        assertEquals("Loan3", result[0].name)
+    }
+
+    @Test
+    fun `test applyStrategy balance proportion`() {
+        val extraPayment = 1000.0
+        val result = strategy.applyStrategy(debts, DebtStrategyType.BALANCE_PROPORTION, extraPayment)
+        assertEquals(3, result.size)
+        // Verify all debts received proportional extra payments
+        val totalDebt = debts.sumOf { it.getRemainingBalance() }
+        debts.forEachIndexed { index, debt ->
+            val expectedProportion = debt.getRemainingBalance() / totalDebt
+            val actualPayment = result[index].monthlyPayment - debt.monthlyPayment
+            assertEquals(extraPayment * expectedProportion, actualPayment, 0.01)
+        }
+    }
+
+    @Test
+    fun `test applyStrategy debt stacking`() {
+        val extraPayment = 200.0
+        val result = strategy.applyStrategy(debts, DebtStrategyType.DEBT_STACKING, extraPayment)
+        assertEquals(3, result.size)
+        
+        // Get the first debt (sorted by months remaining)
+        val firstDebt = result[0]
+        val originalDebt = debts.minByOrNull { it.getMonthsRemaining() }
+        
+        // Verify the total payment includes both minimum payment and extra payment
+        val expectedPayment = originalDebt?.monthlyPayment?.plus(extraPayment) ?: 0.0
+        assertTrue("First debt should receive minimum payment plus extra payment", 
+            firstDebt.getRemainingBalance() <= originalDebt?.getRemainingBalance()?.minus(expectedPayment) ?: 0.0)
     }
 
     @Test

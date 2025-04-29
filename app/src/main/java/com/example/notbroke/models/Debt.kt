@@ -10,7 +10,7 @@ data class Debt(
     val totalAmount: Double = 0.0,
     var amountPaid: Double = 0.0,
     val interestRate: Double = 0.0,
-    val monthlyPayment: Double = 0.0,
+    var monthlyPayment: Double = 0.0,
     val creationDate: Long = System.currentTimeMillis(),
     var lastPaymentDate: Long? = null
 ) {

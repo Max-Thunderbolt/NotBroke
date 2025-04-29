@@ -18,28 +18,37 @@ object RewardManager {
     ): List<Reward> {
         val eligibleRewards = mutableListOf<Reward>()
 
-        if (checkStayWithinBudget(transactions, currentMonth, currentYear, monthlyBudget)) {
-            eligibleRewards.add(getRewardById(1))
+        // Check if there are any transactions for the current month
+        val hasCurrentMonthTransactions = transactions.any { 
+            getMonth(it.date) == currentMonth && getYear(it.date) == currentYear 
         }
+        
+        // Only check rewards if there are transactions for the current month
+        if (hasCurrentMonthTransactions) {
+            // Check each reward criteria individually
+            if (checkStayWithinBudget(transactions, currentMonth, currentYear, monthlyBudget)) {
+                eligibleRewards.add(getRewardById(1))
+            }
 
-        if (checkSave20PercentOfIncome(transactions, currentMonth, currentYear)) {
-            eligibleRewards.add(getRewardById(2))
-        }
+            if (checkSave20PercentOfIncome(transactions, currentMonth, currentYear)) {
+                eligibleRewards.add(getRewardById(2))
+            }
 
-        if (checkLoggedExpensesFor30Days(transactions)) {
-            eligibleRewards.add(getRewardById(3))
-        }
+            if (checkLoggedExpensesFor30Days(transactions)) {
+                eligibleRewards.add(getRewardById(3))
+            }
 
-        if (checkCompletedMonthlyChallenges(transactions, monthlyBudget, currentMonth, currentYear)) {
-            eligibleRewards.add(getRewardById(4))
-        }
+            if (checkCompletedMonthlyChallenges(transactions, monthlyBudget, currentMonth, currentYear)) {
+                eligibleRewards.add(getRewardById(4))
+            }
 
-        if (checkMaintainBudgetQuarterly(transactions)) {
-            eligibleRewards.add(getRewardById(5))
-        }
+            if (checkMaintainBudgetQuarterly(transactions)) {
+                eligibleRewards.add(getRewardById(5))
+            }
 
-        if (checkAchievedSavingsGoal(transactions, savingsGoalQuarterly)) {
-            eligibleRewards.add(getRewardById(6))
+            if (checkAchievedSavingsGoal(transactions, savingsGoalQuarterly)) {
+                eligibleRewards.add(getRewardById(6))
+            }
         }
 
         return eligibleRewards
