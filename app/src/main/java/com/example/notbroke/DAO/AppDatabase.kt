@@ -5,18 +5,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.content.Context
 import kotlin.jvm.Volatile
-import java.lang.ThreadLocal
 
 @Database(
     entities = [
-        TransactionEntity::class, 
+        TransactionEntity::class,
         UserProfileEntity::class,
         DebtEntity::class,
         NetWorthEntryEntity::class,
         RewardEntity::class,
         UserPreferencesEntity::class
-    ], 
-    version = 2,
+    ],
+    version = 3, // ✅ already updated
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun netWorthEntryDao(): NetWorthEntryDao
     abstract fun rewardDao(): RewardDao
     abstract fun userPreferencesDao(): UserPreferencesDao
-    
+
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -38,8 +37,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "notbroke_database"
                 )
-                .fallbackToDestructiveMigration()
-                .build()
+                    .fallbackToDestructiveMigration() // ✅ This line ensures app won't crash on schema changes
+                    .build()
                 INSTANCE = instance
                 instance
             }

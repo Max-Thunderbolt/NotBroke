@@ -1,4 +1,6 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -8,6 +10,7 @@
     android:background="#000000"
     tools:context=".fragments.NetWorthFragment">
 
+    <!-- Total Net Worth -->
     <TextView
         android:id="@+id/totalNetWorthText"
         android:layout_width="wrap_content"
@@ -17,34 +20,74 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
-    <EditText
-        android:id="@+id/addAmountEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter amount"
-        android:inputType="numberDecimal"
-        android:layout_marginTop="12dp"
-        android:backgroundTint="#FF007F"
-        android:textColor="#FFFFFF" />
-
+    <!-- Toggle Entry Form Button -->
     <Button
-        android:id="@+id/addDateButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="SELECT DATE"
-        android:layout_marginTop="8dp"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/pink_border_button" />
-
-    <Button
-        android:id="@+id/addButton"
+        android:id="@+id/toggleFormButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="ADD ENTRY"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:textColor="#FFFFFF"
         android:background="@drawable/pink_border_button" />
 
+    <!-- Entry Form Container (Initially GONE) -->
+    <LinearLayout
+        android:id="@+id/entryFormLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        android:background="#1A1A1A"
+        android:padding="16dp"
+        android:elevation="4dp">
+
+        <!-- Name -->
+        <EditText
+            android:id="@+id/assetNameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Asset Name"
+            android:backgroundTint="#FF007F"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FF007F"
+            android:layout_marginBottom="12dp"/>
+
+
+        <!-- Amount -->
+        <EditText
+            android:id="@+id/addAmountEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter Amount"
+            android:inputType="numberDecimal"
+            android:backgroundTint="#FF007F"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FF007F"
+            android:layout_marginBottom="12dp"/>
+
+
+        <!-- Date -->
+        <Button
+            android:id="@+id/addDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SELECT DATE"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/pink_border_button"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Submit Button -->
+        <Button
+            android:id="@+id/addButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SAVE ENTRY"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/pink_border_button" />
+    </LinearLayout>
+
+    <!-- RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/netWorthRecyclerView"
         android:layout_width="match_parent"
