@@ -14,8 +14,7 @@ import java.text.NumberFormat
 import java.util.Locale
 
 class DebtAdapter(
-    private val onDeleteClick: (Debt) -> Unit,
-    private val onPaymentClick: (Debt) -> Unit
+    private val onDeleteClick: (Debt) -> Unit
 ) : ListAdapter<Debt, DebtAdapter.DebtViewHolder>(DebtDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DebtViewHolder {
@@ -37,7 +36,6 @@ class DebtAdapter(
         private val monthlyPaymentTextView: TextView = itemView.findViewById(R.id.monthlyPaymentItemTextView)
         private val timeRemainingTextView: TextView = itemView.findViewById(R.id.timeRemainingTextView)
         private val deleteButton: View = itemView.findViewById(R.id.deleteDebtButton)
-        private val paymentButton: View = itemView.findViewById(R.id.makePaymentButton)
 
         private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA"))
 
@@ -64,7 +62,6 @@ class DebtAdapter(
 
             // Set click listeners
             deleteButton.setOnClickListener { onDeleteClick(debt) }
-            paymentButton.setOnClickListener { onPaymentClick(debt) }
         }
 
         private fun formatCurrency(amount: Double): String {

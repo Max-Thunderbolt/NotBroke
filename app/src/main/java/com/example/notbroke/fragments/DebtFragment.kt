@@ -40,7 +40,7 @@ import com.example.notbroke.databinding.FragmentDebtBinding
 class DebtFragment : Fragment() {
     private var _binding: FragmentDebtBinding? = null
     private val binding get() = _binding!!
-    
+
     // Views
     private lateinit var progressBar: ProgressBar
     private lateinit var progressPercentageTextView: TextView
@@ -54,7 +54,7 @@ class DebtFragment : Fragment() {
     private lateinit var strategySpinner: Spinner
     private lateinit var strategyDescriptionTextView: TextView
     private lateinit var loadingIndicator: ProgressBar
-    
+
     // Data
     private var debts: MutableList<Debt> = mutableListOf()
     private lateinit var debtAdapter: DebtAdapter
@@ -64,11 +64,11 @@ class DebtFragment : Fragment() {
     private val authService = AuthService.getInstance()
     private val debtStrategy = DebtStrategy()
     private var currentStrategy: DebtStrategyType = DebtStrategyType.AVALANCHE
-    
+
     // Formatting
     private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA"))
     private val dateFormatter = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-    
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -77,16 +77,16 @@ class DebtFragment : Fragment() {
         _binding = FragmentDebtBinding.inflate(inflater, container, false)
         return binding.root
     }
-    
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         // Initialize repository factory
         repositoryFactory = RepositoryFactory.getInstance(requireContext())
-        
+
         // Initialize views
         initializeViews(view)
-        
+
         // Setup UI components
         setupRecyclerView()
         setupStrategySpinner()
@@ -94,7 +94,7 @@ class DebtFragment : Fragment() {
         loadUserPreferences()
         observeDebts()
     }
-    
+
     private fun initializeViews(view: View) {
         progressBar = view.findViewById(R.id.debtProgressBar)
         progressPercentageTextView = view.findViewById(R.id.progressPercentageTextView)
@@ -108,40 +108,44 @@ class DebtFragment : Fragment() {
         strategySpinner = view.findViewById(R.id.strategySpinner)
         strategyDescriptionTextView = view.findViewById(R.id.strategyDescriptionTextView)
         loadingIndicator = view.findViewById(R.id.loadingIndicator)
+
+        // Initialize payment button
+        view.findViewById<Button>(R.id.makePaymentButton).setOnClickListener {
+            showStrategyBasedPaymentDialog()
+        }
     }
-    
+
     private fun setupRecyclerView() {
         debtAdapter = DebtAdapter(
-            onDeleteClick = { debt -> deleteDebt(debt) },
-            onPaymentClick = { debt -> showPaymentDialog(debt) }
+            onDeleteClick = { debt -> deleteDebt(debt) }
         )
         debtsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         debtsRecyclerView.adapter = debtAdapter
     }
-    
+
     private fun setupStrategySpinner() {
         val strategies = DebtStrategyType.values().map { it.name }
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, strategies)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         strategySpinner.adapter = adapter
-        
+
         strategySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedStrategy = DebtStrategyType.values()[position]
                 updateStrategy(selectedStrategy)
             }
-            
+
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
-    
+
     private fun setupAddDebtButton() {
         addDebtButton.setOnClickListener { showAddDebtDialog() }
     }
-    
+
     private fun loadUserPreferences() {
         val userId = authService.getCurrentUserId() ?: return
-        
+
         lifecycleScope.launch {
             try {
                 userPreferencesRepository.observePreferences(userId).collectLatest { preferences ->
@@ -158,16 +162,17 @@ class DebtFragment : Fragment() {
             }
         }
     }
-    
+
     private fun observeDebts() {
         val userId = authService.getCurrentUserId() ?: return
-        
+
         lifecycleScope.launch {
             try {
+                loadingIndicator.visibility = View.VISIBLE
                 debtRepository.getAllDebts(userId).collectLatest { debtList ->
                     debts.clear()
                     debts.addAll(debtList)
-                    
+
                     if (debts.isEmpty()) {
                         noDebtsTextView.visibility = View.VISIBLE
                         debtsRecyclerView.visibility = View.GONE
@@ -176,15 +181,17 @@ class DebtFragment : Fragment() {
                         debtsRecyclerView.visibility = View.VISIBLE
                         debtAdapter.submitList(debts)
                     }
-                    
+
                     updateDebtSummary()
+                    loadingIndicator.visibility = View.GONE
                 }
             } catch (e: Exception) {
+                loadingIndicator.visibility = View.GONE
                 Toast.makeText(context, "Error loading debts: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
-    
+
     private fun updateDebtSummary() {
         if (debts.isEmpty()) {
             progressBar.progress = 0
@@ -195,33 +202,33 @@ class DebtFragment : Fragment() {
             monthlyPaymentTextView.text = currencyFormatter.format(0.0)
             return
         }
-        
+
         val totalDebt = debts.sumOf { it.totalAmount }
         val totalPaid = debts.sumOf { it.amountPaid }
         val progressPercentage = (totalPaid / totalDebt * 100).toInt()
-        
+
         progressBar.progress = progressPercentage
         progressPercentageTextView.text = "$progressPercentage%"
         totalDebtTextView.text = currencyFormatter.format(totalDebt)
         paidOffTextView.text = currencyFormatter.format(totalPaid)
-        
+
         val monthlyPayment = debts.sumOf { it.monthlyPayment }
         monthlyPaymentTextView.text = currencyFormatter.format(monthlyPayment)
-        
+
         // Calculate estimated payoff date based on current strategy
         val estimatedDate = debtStrategy.calculateEstimatedPayoffDate(debts, currentStrategy)
         dateEstimateTextView.text = "Estimated: ${dateFormatter.format(estimatedDate)}"
     }
-    
+
     private fun updateStrategy(strategy: DebtStrategyType) {
         currentStrategy = strategy
         val userId = authService.getCurrentUserId() ?: return
-        
+
         lifecycleScope.launch {
             try {
                 val preferences = UserPreferences(userId, strategy)
                 userPreferencesRepository.savePreferences(preferences)
-                
+
                 // Update strategy description
                 strategyDescriptionTextView.text = when (strategy) {
                     DebtStrategyType.AVALANCHE -> "Pay off debts with the highest interest rates first"
@@ -231,7 +238,7 @@ class DebtFragment : Fragment() {
                     DebtStrategyType.BALANCE_PROPORTION -> "Distribute extra payments proportionally based on remaining balances"
                     DebtStrategyType.DEBT_STACKING -> "Stack payments on one debt at a time until it's paid off"
                 }
-                
+
                 // Recalculate estimated payoff date
                 updateDebtSummary()
             } catch (e: Exception) {
@@ -239,7 +246,7 @@ class DebtFragment : Fragment() {
             }
         }
     }
-    
+
     private fun showAddDebtDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_debt, null)
         val nameEditText = dialogView.findViewById<TextInputEditText>(R.id.debtNameEditText)
@@ -278,7 +285,7 @@ class DebtFragment : Fragment() {
 
         dialog.show()
     }
-    
+
     private fun addDebt(name: String, amount: Double, interestRate: Double, monthlyPayment: Double, amountPaid: Double = 0.0) {
         val userId = authService.getCurrentUserId() ?: return
         val debt = Debt(
@@ -292,7 +299,7 @@ class DebtFragment : Fragment() {
             creationDate = System.currentTimeMillis(),
             lastPaymentDate = null
         )
-        
+
         lifecycleScope.launch {
             try {
                 val result = debtRepository.addDebt(debt)
@@ -306,7 +313,7 @@ class DebtFragment : Fragment() {
             }
         }
     }
-    
+
     private fun deleteDebt(debt: Debt) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Delete Debt")
@@ -329,55 +336,136 @@ class DebtFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
+
+    private fun showStrategyBasedPaymentDialog() {
+        if (debts.isEmpty()) {
+            Toast.makeText(context, "No debts to pay", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Apply the current strategy to find the optimal debt to pay
+        val strategyResult = debtStrategy.applyStrategy(debts, currentStrategy, 0.0)
+        val optimalDebt = when (currentStrategy) {
+            DebtStrategyType.AVALANCHE -> strategyResult.maxByOrNull { it.interestRate }
+            DebtStrategyType.SNOWBALL -> strategyResult.minByOrNull { it.getRemainingBalance() }
+            DebtStrategyType.DEBT_CONSOLIDATION -> strategyResult.firstOrNull()
+            DebtStrategyType.HIGHEST_INTEREST_FIRST -> strategyResult.maxByOrNull { it.interestRate }
+            DebtStrategyType.BALANCE_PROPORTION -> strategyResult.firstOrNull()
+            DebtStrategyType.DEBT_STACKING -> strategyResult.minByOrNull { it.getMonthsRemaining() }
+        } ?: debts.first()
+
+        showPaymentDialog(optimalDebt)
+    }
+
     private fun showPaymentDialog(debt: Debt) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_make_payment, null)
-        val paymentAmountEditText = dialogView.findViewById<TextInputEditText>(R.id.paymentAmountEditText)
-        
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Make Payment")
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
-            .setPositiveButton("Pay") { dialog, _ ->
-                val paymentAmount = paymentAmountEditText.text.toString().toDoubleOrNull()
-                
-                if (paymentAmount == null || paymentAmount <= 0) {
-                    Toast.makeText(context, "Please enter a valid payment amount", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                
-                makePayment(debt, paymentAmount)
-                dialog.dismiss()
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val paymentAmountEditText = dialogView.findViewById<TextInputEditText>(R.id.paymentAmountEditText)
+        val strategyInfoTextView = dialogView.findViewById<TextView>(R.id.strategyInfoTextView)
+        val recommendedPaymentTextView = dialogView.findViewById<TextView>(R.id.recommendedPaymentTextView)
+        val debtNameTextView = dialogView.findViewById<TextView>(R.id.debtNameTextView)
+        val debtBalanceTextView = dialogView.findViewById<TextView>(R.id.debtBalanceTextView)
+        val debtMonthlyPaymentTextView = dialogView.findViewById<TextView>(R.id.debtMonthlyPaymentTextView)
+        val cancelButton = dialogView.findViewById<MaterialButton>(R.id.cancelButton)
+        val payButton = dialogView.findViewById<MaterialButton>(R.id.saveButton)
+
+
+        // Fill in debt details
+        debtNameTextView.text = debt.name
+        debtBalanceTextView.text = "Remaining: ${currencyFormatter.format(debt.getRemainingBalance())}"
+        debtMonthlyPaymentTextView.text = "Monthly Payment: ${currencyFormatter.format(debt.monthlyPayment)}"
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        payButton.setOnClickListener {
+            val paymentAmount = paymentAmountEditText.text.toString().toDoubleOrNull()
+
+            if (paymentAmount == null || paymentAmount <= 0) {
+                Toast.makeText(context, "Please enter a valid payment amount", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+
+            makePayment(debt, paymentAmount)
+            dialog.dismiss()
+        }
+
+        // Calculate recommended payment based on strategy
+        val strategyResult = debtStrategy.applyStrategy(debts, currentStrategy, 0.0)
+        val recommendedDebt = strategyResult.find { it.id == debt.id } ?: debt
+        val recommendedPayment = recommendedDebt.monthlyPayment
+
+        // Set strategy information
+        strategyInfoTextView.text = when (currentStrategy) {
+            DebtStrategyType.AVALANCHE -> "Avalanche Method: Paying highest interest debt first"
+            DebtStrategyType.SNOWBALL -> "Snowball Method: Paying smallest balance debt first"
+            DebtStrategyType.DEBT_CONSOLIDATION -> "Debt Consolidation: Combining debts into one loan"
+            DebtStrategyType.HIGHEST_INTEREST_FIRST -> "Highest Interest First: Focusing on highest interest rates"
+            DebtStrategyType.BALANCE_PROPORTION -> "Balance Proportion: Distributing payments proportionally"
+            DebtStrategyType.DEBT_STACKING -> "Debt Stacking: Stacking payments on one debt at a time"
+        }
+
+        // Set recommended payment
+        recommendedPaymentTextView.text = "Recommended Payment: ${currencyFormatter.format(recommendedPayment)}"
+
+        // Pre-fill the payment amount with the recommended amount
+        paymentAmountEditText.setText(recommendedPayment.toString())
+
+        dialog.show()
     }
-    
+
     private fun makePayment(debt: Debt, paymentAmount: Double) {
-        val updatedDebt = debt.copy(
-            amountPaid = debt.amountPaid + paymentAmount,
-            lastPaymentDate = System.currentTimeMillis()
-        )
-        
+        if (paymentAmount <= 0) {
+            Toast.makeText(context, "Please enter a valid payment amount", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val userId = authService.getCurrentUserId() ?: return
+
         lifecycleScope.launch {
             try {
-                val result = debtRepository.updateDebt(updatedDebt)
+                loadingIndicator.visibility = View.VISIBLE
+
+                // Apply the current strategy to determine how to distribute the payment
+                val strategyResult = debtStrategy.applyStrategy(debts, currentStrategy, paymentAmount)
+
+                // Find the debt in the strategy result that matches our target debt
+                val updatedDebt = strategyResult.find { it.id == debt.id } ?: debt
+
+                // Create a new debt instance with the updated payment
+                val newDebt = updatedDebt.copy(
+                    amountPaid = updatedDebt.amountPaid + paymentAmount,
+                    lastPaymentDate = System.currentTimeMillis()
+                )
+
+                // Update the debt in the repository
+                val result = debtRepository.updateDebt(newDebt)
                 result.onSuccess {
                     Toast.makeText(context, "Payment recorded successfully", Toast.LENGTH_SHORT).show()
                 }.onFailure {
                     Toast.makeText(context, "Failed to record payment: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
+
+                loadingIndicator.visibility = View.GONE
             } catch (e: Exception) {
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                loadingIndicator.visibility = View.GONE
+                Toast.makeText(context, "Error processing payment: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
-    
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
-    
+
     companion object {
         fun newInstance() = DebtFragment()
     }
-} 
+}
