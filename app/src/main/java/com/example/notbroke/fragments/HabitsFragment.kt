@@ -42,7 +42,11 @@ class HabitsFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        repositoryFactory = RepositoryFactory.getInstance(requireContext())
+        try {
+            repositoryFactory = RepositoryFactory.getInstance(requireContext())
+        } catch (e: Exception) {
+            Log.e("HabitsFragment", "Failed to initialize RepositoryFactory", e)
+        }
     }
 
     override fun onCreateView(
