@@ -205,10 +205,10 @@ class DebtStrategy {
         if (extraPayment > 0 && result.isNotEmpty()) {
             val firstDebt = result[0]
             
-            // Update the monthly payment to include the extra payment
+            // First update the monthly payment to include the extra payment
             firstDebt.monthlyPayment += extraPayment
             
-            // Apply the payment to the debt
+            // Then apply the payment to the debt
             firstDebt.makePayment(firstDebt.monthlyPayment)
             
             // If the first debt is paid off, add its payment to the next debt
