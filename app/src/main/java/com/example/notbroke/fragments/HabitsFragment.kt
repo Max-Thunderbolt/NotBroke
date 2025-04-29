@@ -37,7 +37,7 @@ class HabitsFragment : Fragment() {
     private lateinit var btnAddTestTransaction: Button
     
     private lateinit var repositoryFactory: RepositoryFactory
-    private val transactionRepository by lazy { repositoryFactory.getTransactionRepository() }
+    private val transactionRepository by lazy { repositoryFactory.transactionRepository }
     private val authService = AuthService.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,7 +150,8 @@ class HabitsFragment : Fragment() {
             try {
                 transactionRepository.getTransactionsByDateRange(
                     calendarStart.timeInMillis,
-                    calendarEnd.timeInMillis
+                    calendarEnd.timeInMillis,
+                    authService.getCurrentUserId()
                 ).collectLatest { transactions ->
                     val daySums = mutableMapOf<Int, Double>()
                     
@@ -225,7 +226,7 @@ class HabitsFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                transactionRepository.saveTransaction(transaction)
+                transactionRepository.saveTransaction(transaction, authService.getCurrentUserId())
                 Log.d("HabitsFragment", "Test transaction added successfully!")
                 observeTransactionsForMonth(selectedMonth) // Refresh graph
             } catch (e: Exception) {

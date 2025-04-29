@@ -224,8 +224,19 @@ class FirestoreService {
     // Transaction Methods
     suspend fun saveTransactionToFirestore(transaction: Transaction, userId: String): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val transactionWithUserId = transaction.copy(firestoreId = null) // Ensure we don't use local ID
-            val documentRef = transactionsCollection.add(transactionWithUserId).await()
+            // Use the existing firestoreId if available, otherwise create a new document
+            val documentRef = if (transaction.firestoreId != null) {
+                transactionsCollection.document(transaction.firestoreId)
+            } else {
+                transactionsCollection.document()
+            }
+            
+            // Add userId to the transaction
+            val transactionWithUserId = transaction.copy(firestoreId = documentRef.id)
+            
+            // Save to Firestore
+            documentRef.set(transactionWithUserId).await()
+            
             Result.success(documentRef.id)
         } catch (e: Exception) {
             Result.failure(e)

@@ -15,17 +15,17 @@ import kotlinx.coroutines.flow.Flow
 interface TransactionDao {
     // *** FIX for deletion not immediately updating UI ***
     // Filter out transactions marked as PENDING_DELETE
-    @Query("SELECT * FROM transactions WHERE syncStatus != :pendingDeleteStatus ORDER BY date DESC")
-    fun getAllTransactions(pendingDeleteStatus: SyncStatus = SyncStatus.PENDING_DELETE): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE syncStatus != :pendingDeleteStatus AND userId = :userId ORDER BY date DESC")
+    fun getAllTransactions(pendingDeleteStatus: SyncStatus = SyncStatus.PENDING_DELETE, userId: String): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE id = :transactionId")
     fun getTransactionById(transactionId: String): Flow<TransactionEntity?>
 
-    @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
-    fun getTransactionsByDateRange(startDate: Long, endDate: Long): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate AND userId = :userId ORDER BY date DESC")
+    fun getTransactionsByDateRange(startDate: Long, endDate: Long, userId: String): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions WHERE type = :type ORDER BY date DESC")
-    fun getTransactionsByType(type: String): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE type = :type AND userId = :userId ORDER BY date DESC")
+    fun getTransactionsByType(type: String, userId: String): Flow<List<TransactionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity)
@@ -43,8 +43,8 @@ interface TransactionDao {
     suspend fun deleteTransactionById(transactionId: String)
 
     // Query to get transactions that need syncing (not SYNCED)
-    @Query("SELECT * FROM transactions WHERE syncStatus != :status")
-    fun getPendingSyncTransactions(status: SyncStatus = SyncStatus.SYNCED): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE syncStatus != :status AND userId = :userId")
+    fun getPendingSyncTransactions(status: SyncStatus = SyncStatus.SYNCED, userId: String): Flow<List<TransactionEntity>>
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()

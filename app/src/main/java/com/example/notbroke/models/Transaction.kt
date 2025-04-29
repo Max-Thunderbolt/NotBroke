@@ -4,6 +4,7 @@ package com.example.notbroke.models
 data class Transaction(
     val id: Long = 0L, // Local ID (can keep if needed, but Firestore ID is primary)
     val firestoreId: String? = null, // *** ADDED: Firestore document ID ***
+    val userId: String = "", // User ID to associate with this transaction
     val type: Type,
     val amount: Double,
     val description: String,
