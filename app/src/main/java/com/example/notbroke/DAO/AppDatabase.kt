@@ -16,7 +16,8 @@ import java.lang.ThreadLocal
         RewardEntity::class,
         UserPreferencesEntity::class
     ], 
-    version = 1
+    version = 2,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
@@ -37,7 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "notbroke_database"
                 )
-                .fallbackToDestructiveMigration() 
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
