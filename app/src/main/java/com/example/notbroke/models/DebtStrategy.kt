@@ -24,16 +24,17 @@ class DebtStrategy {
      * Apply a debt payoff strategy to a list of debts
      * @param debts List of debts to apply the strategy to
      * @param strategyType The type of strategy to apply
+     * @param extraPayment Optional extra payment amount to apply to the strategy
      * @return A new list of debts with the strategy applied
      */
-    fun applyStrategy(debts: List<Debt>, strategyType: DebtStrategyType): List<Debt> {
+    fun applyStrategy(debts: List<Debt>, strategyType: DebtStrategyType, extraPayment: Double = 0.0): List<Debt> {
         return when (strategyType) {
-            DebtStrategyType.AVALANCHE -> applyAvalancheMethod(debts)
-            DebtStrategyType.SNOWBALL -> applySnowballMethod(debts)
+            DebtStrategyType.AVALANCHE -> applyAvalancheMethod(debts, extraPayment)
+            DebtStrategyType.SNOWBALL -> applySnowballMethod(debts, extraPayment)
             DebtStrategyType.DEBT_CONSOLIDATION -> applyDebtConsolidation(debts)
-            DebtStrategyType.HIGHEST_INTEREST_FIRST -> applyHighestInterestFirst(debts)
-            DebtStrategyType.BALANCE_PROPORTION -> applyBalanceProportion(debts)
-            DebtStrategyType.DEBT_STACKING -> applyDebtStacking(debts)
+            DebtStrategyType.HIGHEST_INTEREST_FIRST -> applyHighestInterestFirst(debts, extraPayment)
+            DebtStrategyType.BALANCE_PROPORTION -> applyBalanceProportion(debts, extraPayment)
+            DebtStrategyType.DEBT_STACKING -> applyDebtStacking(debts, extraPayment)
         }
     }
     
@@ -67,48 +68,174 @@ class DebtStrategy {
     /**
      * Avalanche Method: Pay minimum on all debts, then put extra money towards highest interest rate debt first
      */
-    private fun applyAvalancheMethod(debts: List<Debt>): List<Debt> {
-        return debts.sortedByDescending { it.interestRate }
+    private fun applyAvalancheMethod(debts: List<Debt>, extraPayment: Double): List<Debt> {
+        if (debts.isEmpty()) return emptyList()
+        
+        val sortedDebts = debts.sortedByDescending { it.interestRate }
+        val result = mutableListOf<Debt>()
+        var remainingExtraPayment = extraPayment
+
+        // First, apply minimum payments to all debts
+        sortedDebts.forEach { debt ->
+            val debtCopy = debt.copy()
+            debtCopy.makePayment(debt.monthlyPayment)
+            result.add(debtCopy)
+        }
+
+        // Then apply extra payment to highest interest debt
+        if (remainingExtraPayment > 0) {
+            val highestInterestDebt = result.first()
+            val payment = minOf(remainingExtraPayment, highestInterestDebt.getRemainingBalance())
+            highestInterestDebt.makePayment(payment)
+            remainingExtraPayment -= payment
+        }
+
+        return result
     }
     
     /**
      * Snowball Method: Pay minimum on all debts, then put extra money towards smallest balance debt first
      */
-    private fun applySnowballMethod(debts: List<Debt>): List<Debt> {
-        return debts.sortedBy { it.getRemainingBalance() }
+    private fun applySnowballMethod(debts: List<Debt>, extraPayment: Double): List<Debt> {
+        if (debts.isEmpty()) return emptyList()
+        
+        val sortedDebts = debts.sortedBy { it.getRemainingBalance() }
+        val result = mutableListOf<Debt>()
+        var remainingExtraPayment = extraPayment
+
+        // First, apply minimum payments to all debts
+        sortedDebts.forEach { debt ->
+            val debtCopy = debt.copy()
+            debtCopy.makePayment(debt.monthlyPayment)
+            result.add(debtCopy)
+        }
+
+        // Then apply extra payment to smallest balance debt
+        if (remainingExtraPayment > 0) {
+            val smallestDebt = result.minByOrNull { it.getRemainingBalance() }
+            smallestDebt?.let {
+                val payment = minOf(remainingExtraPayment, it.getRemainingBalance())
+                it.makePayment(payment)
+                remainingExtraPayment -= payment
+            }
+        }
+
+        return result
     }
     
     /**
      * Debt Consolidation: Combine multiple debts into a single loan with lower interest rate
-     * This is a simulation - in a real app, this would calculate the consolidated loan details
      */
     private fun applyDebtConsolidation(debts: List<Debt>): List<Debt> {
-        // In a real implementation, this would create a new consolidated debt
-        // For now, we'll just return the original debts sorted by interest rate
-        return debts.sortedByDescending { it.interestRate }
+        if (debts.isEmpty()) return emptyList()
+
+        val totalDebt = debts.sumOf { it.getRemainingBalance() }
+        val weightedInterestRate = debts.sumOf { it.getRemainingBalance() * it.interestRate } / totalDebt
+        val consolidatedRate = (weightedInterestRate - 2.0).coerceAtLeast(4.0) // Minimum 4%
+        
+        // Create a new consolidated debt
+        val consolidatedDebt = Debt(
+            name = "Consolidated Loan",
+            balance = totalDebt,
+            interestRate = consolidatedRate,
+            monthlyPayment = calculateConsolidatedMonthlyPayment(totalDebt, consolidatedRate)
+        )
+
+        return listOf(consolidatedDebt)
     }
     
     /**
      * Highest Interest First: Focus exclusively on paying off debts with the highest interest rates first
      */
-    private fun applyHighestInterestFirst(debts: List<Debt>): List<Debt> {
-        return debts.sortedByDescending { it.interestRate }
+    private fun applyHighestInterestFirst(debts: List<Debt>, extraPayment: Double): List<Debt> {
+        if (debts.isEmpty()) return emptyList()
+        
+        val sortedDebts = debts.sortedByDescending { it.interestRate }
+        val result = mutableListOf<Debt>()
+        var remainingExtraPayment = extraPayment
+
+        // Apply minimum payments to all debts
+        sortedDebts.forEach { debt ->
+            val debtCopy = debt.copy()
+            debtCopy.makePayment(debt.monthlyPayment)
+            result.add(debtCopy)
+        }
+
+        // Apply extra payment to highest interest debt
+        if (remainingExtraPayment > 0) {
+            val highestInterestDebt = result.first()
+            val payment = minOf(remainingExtraPayment, highestInterestDebt.getRemainingBalance())
+            highestInterestDebt.makePayment(payment)
+        }
+
+        return result
     }
     
     /**
      * Balance Proportion: Distribute extra payments proportionally based on debt balances
      */
-    private fun applyBalanceProportion(debts: List<Debt>): List<Debt> {
-        // In a real implementation, this would calculate proportional payments
-        // For now, we'll just return the original debts
-        return debts
+    private fun applyBalanceProportion(debts: List<Debt>, extraPayment: Double): List<Debt> {
+        if (debts.isEmpty()) return emptyList()
+        
+        val result = mutableListOf<Debt>()
+        val totalDebt = debts.sumOf { it.getRemainingBalance() }
+
+        // Apply minimum payments and calculate proportional extra payments
+        debts.forEach { debt ->
+            val debtCopy = debt.copy()
+            val minimumPayment = debt.monthlyPayment
+            val proportionalExtra = (debt.getRemainingBalance() / totalDebt) * extraPayment
+            val totalPayment = minimumPayment + proportionalExtra
+            
+            debtCopy.makePayment(totalPayment)
+            result.add(debtCopy)
+        }
+
+        return result
     }
     
     /**
      * Debt Stacking: After paying off one debt, add that payment amount to the next debt payment
      */
-    private fun applyDebtStacking(debts: List<Debt>): List<Debt> {
-        return debts.sortedBy { it.getMonthsRemaining() }
+    private fun applyDebtStacking(debts: List<Debt>, extraPayment: Double): List<Debt> {
+        if (debts.isEmpty()) return emptyList()
+        
+        val sortedDebts = debts.sortedBy { it.getMonthsRemaining() }
+        val result = mutableListOf<Debt>()
+        var availablePayment = extraPayment
+
+        // Apply minimum payments and stack payments from paid-off debts
+        sortedDebts.forEach { debt ->
+            val debtCopy = debt.copy()
+            val payment = debt.monthlyPayment + availablePayment
+            debtCopy.makePayment(payment)
+            
+            if (debtCopy.getRemainingBalance() <= 0) {
+                // If debt is paid off, add its minimum payment to available payment
+                availablePayment += debt.monthlyPayment
+            } else {
+                availablePayment = 0.0
+            }
+            
+            result.add(debtCopy)
+        }
+
+        return result
+    }
+    
+    /**
+     * Calculate the monthly payment for a consolidated loan
+     */
+    private fun calculateConsolidatedMonthlyPayment(principal: Double, annualInterestRate: Double): Double {
+        val monthlyRate = annualInterestRate / 100.0 / 12.0
+        val numberOfPayments = 60.0 // 5 years term
+        
+        return if (monthlyRate == 0.0) {
+            principal / numberOfPayments
+        } else {
+            principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
+                    (Math.pow(1 + monthlyRate, numberOfPayments) - 1)
+        }
     }
     
     /**
