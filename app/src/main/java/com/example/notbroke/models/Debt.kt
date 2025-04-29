@@ -70,6 +70,7 @@ data class Debt(
      * Makes a payment on the debt and updates the paid amount
      */
     fun makePayment(amount: Double): Double {
+        if (amount <= 0) return 0.0
         val remaining = getRemainingBalance()
         val paymentToApply = amount.coerceAtMost(remaining)
         

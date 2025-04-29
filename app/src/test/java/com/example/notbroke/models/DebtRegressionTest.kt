@@ -179,4 +179,36 @@ class DebtRegressionTest {
         assertTrue("First debt should receive extra payment", 
             firstDebtNewPayment >= firstDebtOriginalPayment + extraPayment)
     }
+
+    @Test
+    fun `test removing a debt mid-flow and reapplying strategy`() {
+        // Remove the car loan and reapply snowball
+        val debtsWithoutCar = debts.filter { it.name != "Car Loan" }
+        val result = strategy.applyStrategy(debtsWithoutCar, DebtStrategyType.SNOWBALL, 500.0)
+        assertEquals(2, result.size)
+        assertTrue(result.none { it.name == "Car Loan" })
+    }
+
+    @Test
+    fun `test updating a debt and reapplying strategy`() {
+        // Update the credit card to have a higher payment and reapply avalanche
+        val updatedDebts = debts.map {
+            if (it.name == "Credit Card") it.copy(monthlyPayment = 1000.0) else it
+        }
+        val result = strategy.applyStrategy(updatedDebts, DebtStrategyType.AVALANCHE, 500.0)
+        assertEquals(3, result.size)
+        assertEquals("Credit Card", result[0].name)
+        assertTrue(result[0].monthlyPayment >= 1000.0)
+    }
+
+    @Test
+    fun `test floating point precision in balance proportion strategy`() {
+        val trickyDebts = listOf(
+            Debt(id = "1", name = "A", totalAmount = 0.03, amountPaid = 0.01, interestRate = 0.0, monthlyPayment = 0.01),
+            Debt(id = "2", name = "B", totalAmount = 0.07, amountPaid = 0.02, interestRate = 0.0, monthlyPayment = 0.02)
+        )
+        val result = strategy.applyStrategy(trickyDebts, DebtStrategyType.BALANCE_PROPORTION, 0.03)
+        val totalExtra = result[0].monthlyPayment - 0.01 + result[1].monthlyPayment - 0.02
+        assertEquals(0.03, totalExtra, 0.0001)
+    }
 } 

@@ -94,4 +94,57 @@ class DebtTest {
         assertTrue(sampleDebts.isNotEmpty())
         assertTrue(sampleDebts.all { it.userId == "userX" })
     }
+
+    @Test
+    fun `test makePayment with negative value does not reduce amountPaid`() {
+        val oldPaid = debt.amountPaid
+        val payment = debt.makePayment(-100.0)
+        assertEquals(0.0, payment, 0.001)
+        assertEquals(oldPaid, debt.amountPaid, 0.001)
+    }
+
+    @Test
+    fun `test getMonthsRemaining with zero monthly payment returns max value`() {
+        val zeroPaymentDebt = debt.copy(monthlyPayment = 0.0)
+        assertEquals(Int.MAX_VALUE, zeroPaymentDebt.getMonthsRemaining())
+    }
+
+    @Test
+    fun `test makePayment with zero value does not change amountPaid`() {
+        val oldPaid = debt.amountPaid
+        val payment = debt.makePayment(0.0)
+        assertEquals(0.0, payment, 0.001)
+        assertEquals(oldPaid, debt.amountPaid, 0.001)
+    }
+
+    @Test
+    fun `test makePayment with amount equal to remaining balance pays off debt`() {
+        val remaining = debt.getRemainingBalance()
+        val payment = debt.makePayment(remaining)
+        assertEquals(remaining, payment, 0.001)
+        assertEquals(debt.totalAmount, debt.amountPaid, 0.001)
+    }
+
+    @Test
+    fun `test makePayment when debt is already fully paid does nothing`() {
+        val paidOffDebt = debt.copy(amountPaid = debt.totalAmount)
+        val payment = paidOffDebt.makePayment(100.0)
+        assertEquals(0.0, payment, 0.001)
+        assertEquals(paidOffDebt.totalAmount, paidOffDebt.amountPaid, 0.001)
+    }
+
+    @Test
+    fun `test Debt with large values does not overflow`() {
+        val largeDebt = Debt(
+            id = "large",
+            userId = "user",
+            name = "Big Loan",
+            totalAmount = Double.MAX_VALUE / 2,
+            amountPaid = Double.MAX_VALUE / 4,
+            interestRate = 1.0,
+            monthlyPayment = Double.MAX_VALUE / 8
+        )
+        val months = largeDebt.getMonthsRemaining()
+        assertTrue(months > 0 && months < Int.MAX_VALUE)
+    }
 } 

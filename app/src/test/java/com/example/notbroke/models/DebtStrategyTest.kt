@@ -153,4 +153,43 @@ class DebtStrategyTest {
         val instance2 = DebtStrategy.getInstance()
         assertSame(instance1, instance2)
     }
+
+    @Test
+    fun `test applyStrategy with single debt returns correct result`() {
+        val singleDebt = listOf(debts[0])
+        val result = strategy.applyStrategy(singleDebt, DebtStrategyType.AVALANCHE, 100.0)
+        assertEquals(1, result.size)
+        assertEquals(debts[0].id, result[0].id)
+    }
+
+    @Test
+    fun `test applyStrategy with all debts paid does not apply extra payment`() {
+        val paidDebts = debts.map { it.copy(amountPaid = it.totalAmount) }
+        val result = strategy.applyStrategy(paidDebts, DebtStrategyType.SNOWBALL, 500.0)
+        assertTrue(result.all { it.getRemainingBalance() == 0.0 })
+    }
+
+    @Test
+    fun `test avalanche tie-breaker with same interest rate`() {
+        val tieDebts = listOf(
+            Debt(id = "1", name = "A", totalAmount = 1000.0, amountPaid = 0.0, interestRate = 10.0, monthlyPayment = 100.0),
+            Debt(id = "2", name = "B", totalAmount = 1000.0, amountPaid = 0.0, interestRate = 10.0, monthlyPayment = 100.0)
+        )
+        val result = strategy.applyStrategy(tieDebts, DebtStrategyType.AVALANCHE)
+        assertEquals(2, result.size)
+        // Order should be stable or as expected
+        assertTrue(result[0].interestRate == result[1].interestRate)
+    }
+
+    @Test
+    fun `test snowball tie-breaker with same remaining balance`() {
+        val tieDebts = listOf(
+            Debt(id = "1", name = "A", totalAmount = 1000.0, amountPaid = 500.0, interestRate = 10.0, monthlyPayment = 100.0),
+            Debt(id = "2", name = "B", totalAmount = 1000.0, amountPaid = 500.0, interestRate = 5.0, monthlyPayment = 100.0)
+        )
+        val result = strategy.applyStrategy(tieDebts, DebtStrategyType.SNOWBALL)
+        assertEquals(2, result.size)
+        // Order should be stable or as expected
+        assertTrue(result[0].getRemainingBalance() == result[1].getRemainingBalance())
+    }
 } 

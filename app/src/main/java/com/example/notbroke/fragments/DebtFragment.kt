@@ -51,7 +51,6 @@ class DebtFragment : Fragment() {
     private lateinit var debtsRecyclerView: RecyclerView
     private lateinit var noDebtsTextView: TextView
     private lateinit var addDebtButton: Button
-    private lateinit var addDebtFab: FloatingActionButton
     private lateinit var strategySpinner: Spinner
     private lateinit var strategyDescriptionTextView: TextView
     private lateinit var loadingIndicator: ProgressBar
@@ -106,7 +105,6 @@ class DebtFragment : Fragment() {
         debtsRecyclerView = view.findViewById(R.id.debtsRecyclerView)
         noDebtsTextView = view.findViewById(R.id.noDebtsTextView)
         addDebtButton = view.findViewById(R.id.addDebtButton)
-        addDebtFab = view.findViewById(R.id.addDebtFab)
         strategySpinner = view.findViewById(R.id.strategySpinner)
         strategyDescriptionTextView = view.findViewById(R.id.strategyDescriptionTextView)
         loadingIndicator = view.findViewById(R.id.loadingIndicator)
@@ -139,7 +137,6 @@ class DebtFragment : Fragment() {
     
     private fun setupAddDebtButton() {
         addDebtButton.setOnClickListener { showAddDebtDialog() }
-        addDebtFab.setOnClickListener { showAddDebtDialog() }
     }
     
     private fun loadUserPreferences() {
@@ -249,36 +246,47 @@ class DebtFragment : Fragment() {
         val amountEditText = dialogView.findViewById<TextInputEditText>(R.id.debtAmountEditText)
         val interestRateEditText = dialogView.findViewById<TextInputEditText>(R.id.interestRateEditText)
         val monthlyPaymentEditText = dialogView.findViewById<TextInputEditText>(R.id.monthlyPaymentEditText)
-        
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Add New Debt")
+        val amountPaidEditText = dialogView.findViewById<TextInputEditText>(R.id.amountPaidEditText)
+        val cancelButton = dialogView.findViewById<MaterialButton>(R.id.cancelButton)
+        val saveButton = dialogView.findViewById<MaterialButton>(R.id.saveButton)
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
-            .setPositiveButton("Add") { dialog, _ ->
-                val name = nameEditText.text.toString()
-                val amount = amountEditText.text.toString().toDoubleOrNull()
-                val interestRate = interestRateEditText.text.toString().toDoubleOrNull()
-                val monthlyPayment = monthlyPaymentEditText.text.toString().toDoubleOrNull()
-                
-                if (name.isBlank() || amount == null || interestRate == null || monthlyPayment == null) {
-                    Toast.makeText(context, "Please fill all fields with valid values", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                
-                addDebt(name, amount, interestRate, monthlyPayment)
-                dialog.dismiss()
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        saveButton.setOnClickListener {
+            val name = nameEditText.text.toString()
+            val amount = amountEditText.text.toString().toDoubleOrNull()
+            val interestRate = interestRateEditText.text.toString().toDoubleOrNull()
+            val monthlyPayment = monthlyPaymentEditText.text.toString().toDoubleOrNull()
+            val amountPaid = amountPaidEditText.text.toString().toDoubleOrNull() ?: 0.0
+
+            if (name.isBlank() || amount == null || interestRate == null || monthlyPayment == null) {
+                Toast.makeText(context, "Please fill all fields with valid values", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+
+            addDebt(name, amount, interestRate, monthlyPayment, amountPaid)
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
     
-    private fun addDebt(name: String, amount: Double, interestRate: Double, monthlyPayment: Double) {
+    private fun addDebt(name: String, amount: Double, interestRate: Double, monthlyPayment: Double, amountPaid: Double = 0.0) {
         val userId = authService.getCurrentUserId() ?: return
         val debt = Debt(
             id = java.util.UUID.randomUUID().toString(),
             userId = userId,
             name = name,
             totalAmount = amount,
-            amountPaid = 0.0,
+            amountPaid = amountPaid,
             interestRate = interestRate,
             monthlyPayment = monthlyPayment,
             creationDate = System.currentTimeMillis(),
