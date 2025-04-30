@@ -13,9 +13,10 @@ import kotlin.jvm.Volatile
         DebtEntity::class,
         NetWorthEntryEntity::class,
         RewardEntity::class,
-        UserPreferencesEntity::class
+        UserPreferencesEntity::class,
+        CategoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun netWorthEntryDao(): NetWorthEntryDao
     abstract fun rewardDao(): RewardDao
     abstract fun userPreferencesDao(): UserPreferencesDao
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         @Volatile

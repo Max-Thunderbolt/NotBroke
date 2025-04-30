@@ -16,7 +16,10 @@ import com.example.notbroke.fragments.ProgressionFragment
 import com.example.notbroke.fragments.HabitsFragment
 import com.example.notbroke.fragments.DebtFragment
 import com.example.notbroke.fragments.NetWorthFragment
+import com.example.notbroke.fragments.SettingsFragment
 import com.google.android.material.button.MaterialButton
+import com.example.notbroke.services.AuthService
+import com.example.notbroke.utils.CategorizationUtils
 
 class HomeActivity : AppCompatActivity() {
     private val TAG = "HomeActivity"
@@ -32,12 +35,14 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var debtsMenuItem: LinearLayout
     private lateinit var netWorthMenuItem: LinearLayout
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         try {
             Log.d(TAG, "Starting onCreate")
 
             super.onCreate(savedInstanceState)
             setContentView(R.layout.activity_home)
+
 
             // Initialize drawer components
             drawerLayout = findViewById(R.id.drawerLayout)
@@ -104,6 +109,7 @@ class HomeActivity : AppCompatActivity() {
 
             settingsMenuItem.setOnClickListener {
                 showToast("Settings selected")
+                loadFragment(SettingsFragment.newInstance())
                 drawerLayout.closeDrawer(GravityCompat.START)
             }
 

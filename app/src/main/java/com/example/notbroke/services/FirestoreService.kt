@@ -7,6 +7,7 @@ import com.example.notbroke.models.Transaction
 import com.example.notbroke.models.Reward
 import com.example.notbroke.models.NetWorthEntry
 import com.example.notbroke.models.UserProfile
+import com.example.notbroke.models.Category
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -27,6 +28,7 @@ class FirestoreService {
     private val rewardsCollection = db.collection("rewards")
     private val netWorthCollection = db.collection("netWorth")
     private val userProfilesCollection = db.collection("userProfiles")
+    private val categoriesCollection = db.collection("categories")
     
     // User Profile Methods
     suspend fun saveUserProfile(userId: String, username: String, email: String): Result<Unit> = withContext(Dispatchers.IO) {
@@ -584,6 +586,106 @@ class FirestoreService {
                 }
             }
             
+        awaitClose { subscription.remove() }
+    }
+
+    // Category Methods
+    // Get categories collection for a specific user
+    private fun getCategoriesCollection(userId: String) =
+        db.collection("users").document(userId).collection("categories")
+
+    suspend fun saveCategoryToFirestore(category: Category, userId: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Use the existing firestoreId if available, otherwise create a new document
+            val documentRef = if (category.firestoreId != null) {
+                getCategoriesCollection(userId).document(category.firestoreId)
+            } else {
+                getCategoriesCollection(userId).document()
+            }
+
+            // Add userId to the category and set the Firestore ID
+            val categoryWithId = category.copy(
+                firestoreId = documentRef.id,
+                userId = userId
+            )
+
+            // Save to Firestore
+            documentRef.set(categoryWithId).await()
+            Result.success(documentRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateCategoryInFirestore(category: Category): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val categoryId = category.firestoreId ?: return@withContext Result.failure(Exception("Category ID is required"))
+            getCategoriesCollection(category.userId).document(categoryId)
+                .set(category)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteCategoryFromFirestore(categoryId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // First get the category to find its userId
+            val category = getCategoryById(categoryId).getOrNull()
+                ?: return@withContext Result.failure(Exception("Category not found"))
+
+            getCategoriesCollection(category.userId).document(categoryId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCategoryById(categoryId: String): Result<Category> = withContext(Dispatchers.IO) {
+        try {
+            // Search in all users for the category
+            val querySnapshot = db.collection("users")
+                .get()
+                .await()
+
+            for (userDoc in querySnapshot.documents) {
+                val categoryDoc = userDoc.reference.collection("categories")
+                    .document(categoryId)
+                    .get()
+                    .await()
+
+                val category = categoryDoc.toObject(Category::class.java)
+                if (category != null) {
+                    return@withContext Result.success(category.copy(firestoreId = categoryDoc.id))
+                }
+            }
+
+            Result.failure(NoSuchElementException("Category not found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeCategories(userId: String): Flow<List<Category>> = callbackFlow {
+        val subscription = getCategoriesCollection(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+
+                snapshot?.let { querySnapshot ->
+                    val categories = querySnapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Category::class.java)?.copy(
+                            firestoreId = doc.id
+                        )
+                    }
+                    trySend(categories)
+                }
+            }
+
         awaitClose { subscription.remove() }
     }
     

@@ -37,6 +37,10 @@ class RepositoryFactory private constructor(context: Context) {
         TransactionRepository(database.transactionDao(), firestoreService)
     }
 
+    val categoryRepository: CategoryRepository by lazy {
+        CategoryRepository(database.categoryDao(), firestoreService)
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: RepositoryFactory? = null

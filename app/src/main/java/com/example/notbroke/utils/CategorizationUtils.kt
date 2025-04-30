@@ -1,9 +1,17 @@
 package com.example.notbroke.utils
 
+import android.content.Context
+import androidx.lifecycle.lifecycleScope
+import com.example.notbroke.models.Category
+import com.example.notbroke.repositories.RepositoryFactory
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
 object CategorizationUtils {
     //custom category temp storage(will update to database permanet storage)
     private val customIncomeCategories = mutableListOf<String>()
     private val customExpenseCategories = mutableListOf<String>()
+    private var isInitialized = false
 
     // Basic keyword-to-category mapping. Expand this significantly.
     // Basic keyword-to-category mapping.
@@ -35,7 +43,7 @@ object CategorizationUtils {
     ).toSortedMap() // Sort categories alphabetically for the dropdown
 
     // List of all possible categories (used for the dropdown) - now sorted
-    val allCategories: List<String> = categoryRules.keys.toList()
+    val allCategories: List<String> = (categoryRules.keys.toList() + customIncomeCategories + customExpenseCategories).distinct().sorted()
 
     // Income categories - define separately if needed for the dialog- making changes to now accept custom categories
     val incomeCategories: List<String> = (listOf("Salary", "Investments", "Freelance", "Gift", "Other Income") + customIncomeCategories).sorted()
@@ -43,9 +51,42 @@ object CategorizationUtils {
     //expense categories - define separately if needed for the dialog- making changes to now accept custom categories
     val expenseCategories: List<String> = (categoryRules.keys.toList() + customExpenseCategories).sorted()
 
+    // Load categories from database
+    suspend fun loadCategoriesFromDatabase(context: Context, userId: String) {
+        try {
+            val repository = RepositoryFactory.getInstance(context).categoryRepository
+
+            // Get all categories from database
+            val categories = repository.getAllCategories(userId).first()
+
+            // Clear existing custom categories
+            customIncomeCategories.clear()
+            customExpenseCategories.clear()
+
+            // Add categories to appropriate lists
+            categories.forEach { category ->
+                when (category.categoryType) {
+                    Category.Type.INCOME -> {
+                        if (!customIncomeCategories.contains(category.categoryName)) {
+                            customIncomeCategories.add(category.categoryName)
+                        }
+                    }
+                    Category.Type.EXPENSE -> {
+                        if (!customExpenseCategories.contains(category.categoryName)) {
+                            customExpenseCategories.add(category.categoryName)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Log error but don't crash
+            e.printStackTrace()
+        }
+    }
+
     // add custom income categories
     fun addCustomIncomeCategory(category: String) {
-        if (!expenseCategories.contains(category)) {
+        if (!customIncomeCategories.contains(category)) {
             customIncomeCategories.add(category)
         }
     }
