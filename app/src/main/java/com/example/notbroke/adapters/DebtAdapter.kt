@@ -15,7 +15,7 @@ import java.util.Locale
 
 class DebtAdapter(
     private val onDeleteClick: (Debt) -> Unit,
-    private val onPaymentClick: (Debt) -> Unit
+    private val onDebtClick: (Debt) -> Unit
 ) : ListAdapter<Debt, DebtAdapter.DebtViewHolder>(DebtDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DebtViewHolder {
@@ -37,9 +37,11 @@ class DebtAdapter(
         private val monthlyPaymentTextView: TextView = itemView.findViewById(R.id.monthlyPaymentItemTextView)
         private val timeRemainingTextView: TextView = itemView.findViewById(R.id.timeRemainingTextView)
         private val deleteButton: View = itemView.findViewById(R.id.deleteDebtButton)
-        private val paymentButton: View = itemView.findViewById(R.id.makePaymentButton)
 
-        private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA"))
+        private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
 
         fun bind(debt: Debt) {
             nameTextView.text = debt.name
@@ -64,7 +66,7 @@ class DebtAdapter(
 
             // Set click listeners
             deleteButton.setOnClickListener { onDeleteClick(debt) }
-            paymentButton.setOnClickListener { onPaymentClick(debt) }
+            itemView.setOnClickListener { onDebtClick(debt) }
         }
 
         private fun formatCurrency(amount: Double): String {
