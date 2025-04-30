@@ -66,7 +66,10 @@ class DebtFragment : Fragment() {
     private var currentStrategy: DebtStrategyType = DebtStrategyType.AVALANCHE
 
     // Formatting
-    private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA"))
+    private val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "ZA")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
     private val dateFormatter = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
 
     override fun onCreateView(
@@ -117,14 +120,17 @@ class DebtFragment : Fragment() {
 
     private fun setupRecyclerView() {
         debtAdapter = DebtAdapter(
-            onDeleteClick = { debt -> deleteDebt(debt) }
+            onDeleteClick = { debt -> deleteDebt(debt) },
+            onDebtClick = { debt -> showPaymentDialog(debt) }
         )
         debtsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         debtsRecyclerView.adapter = debtAdapter
     }
 
     private fun setupStrategySpinner() {
-        val strategies = DebtStrategyType.values().map { it.name }
+        val strategies = DebtStrategyType.values().map { 
+            it.name.replace("_", " ")
+        }
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, strategies)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         strategySpinner.adapter = adapter
