@@ -11,9 +11,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
-import com.google.firebase.firestore.FirebaseFirestoreException
-import java.util.UUID // Import UUID
 import kotlinx.coroutines.delay
+import java.util.UUID
 
 /**
  * Repository for handling transaction data from both local database and Firestore
@@ -27,7 +26,13 @@ class TransactionRepository(
     // Get all transactions as Flow (modified in DAO to filter PENDING_DELETE)
     fun getAllTransactions(userId: String): Flow<List<Transaction>> = 
         transactionDao.getAllTransactions(userId = userId) // Uses the updated DAO method
-            .map { entities -> entities.map { it.toTransaction() } }
+            .map { entities -> 
+                Log.d(TAG, "Retrieved ${entities.size} entities from DAO for user $userId")
+                entities.forEach { entity ->
+                    Log.d(TAG, "Entity: id=${entity.id}, syncStatus=${entity.syncStatus}, userId=${entity.userId}")
+                }
+                entities.map { it.toTransaction() }
+            }
 
     /**
      * Save transaction to both local database and Firestore
@@ -243,43 +248,32 @@ class TransactionRepository(
                     }
                     SyncStatus.PENDING_UPDATE -> {
                         Log.d(TAG, "Sync: Updating transaction: ${transaction.description}")
-                        // Ensure firestoreId exists before attempting update
                         transaction.firestoreId?.let { firestoreId ->
                             val firestoreResult = firestoreService.updateTransactionInFirestore(transaction)
 
                             firestoreResult.onSuccess {
                                 Log.d(TAG, "Sync: Updated transaction ${transaction.description}. Firestore ID: $firestoreId")
-                                // Mark as synced after successful update
                                 transactionDao.updateTransaction(transactionEntity.copy(syncStatus = SyncStatus.SYNCED))
                             }.onFailure { e ->
                                 Log.e(TAG, "Sync: Failed to update transaction ${transaction.description}: ${e.message}", e)
-                                // Keep status as PENDING_UPDATE if update failed, sync will retry.
                             }
                         } ?: run {
                             Log.e(TAG, "Sync: Cannot update transaction with null firestoreId: ${transaction.description}. Marking as error or SYNCED with warning?")
-                            // Decide how to handle updates for entities that somehow lost their firestoreId.
-                            // For now, just log and leave as PENDING_UPDATE.
                         }
                     }
                     SyncStatus.PENDING_DELETE -> {
                         Log.d(TAG, "Sync: Deleting transaction: ${transaction.description}")
-                        // Ensure firestoreId exists before attempting deletion from Firestore
                         transaction.firestoreId?.let { firestoreId ->
                             val firestoreResult = firestoreService.deleteTransactionFromFirestore(transactionId = firestoreId)
 
                             firestoreResult.onSuccess {
-                                Log.d(TAG, "Sync: Deleted transaction from Firestore: $firestoreId")
-                                // Remove from local database only after successful deletion from Firestore
-                                transactionDao.deleteTransaction(transactionEntity) // Delete from Room
+
                             }.onFailure { e ->
                                 Log.e(TAG, "Sync: Failed to delete transaction from Firestore: ${e.message}", e)
-                                // Keep status as PENDING_DELETE if deletion failed, sync will retry.
                             }
                         } ?: run {
-                            // If firestoreId is null, it was never uploaded.
-                            // It was already marked PENDING_DELETE, and will be cleaned up here.
                             Log.w(TAG, "Sync: Deleting local-only transaction with null firestoreId: ${transaction.description}")
-                            transactionDao.deleteTransaction(transactionEntity) // Delete from Room
+                            transactionDao.deleteTransaction(transactionEntity)
                         }
                     }
                     SyncStatus.SYNCED -> {
@@ -298,9 +292,6 @@ class TransactionRepository(
 
     /**
      * Load transactions from Firestore and save to local database
-     * This function should be called periodically to fetch data from Firestore
-     * and merge it with the local database. Conflict resolution is handled by OnConflictStrategy.REPLACE
-     * using the entity's `id` (which will be the firestoreId for remote transactions).
      */
     suspend fun loadTransactionsFromFirestore(userId: String, startDate: Long, endDate: Long) = withContext(Dispatchers.IO) {
         try {
@@ -426,7 +417,6 @@ class TransactionRepository(
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing batch: ${e.message}", e)
-                    // Continue with next batch even if current batch fails
                 }
             }
             
@@ -456,17 +446,16 @@ class TransactionRepository(
             try {
                 when {
                     transactionWithUserId.firestoreId == null -> {
-                        // New transaction, try to upload
                         val result = firestoreService.saveTransactionToFirestore(transactionWithUserId, userId)
                         if (result.isSuccess) {
-                            return // Success, exit retry loop
+                            return 
                         }
                     }
                     else -> {
-                        // Existing transaction, try to update
+
                         val result = firestoreService.updateTransactionInFirestore(transactionWithUserId)
                         if (result.isSuccess) {
-                            return // Success, exit retry loop
+                            return 
                         }
                     }
                 }

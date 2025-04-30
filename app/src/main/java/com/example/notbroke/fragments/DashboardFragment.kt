@@ -88,7 +88,6 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private lateinit var balanceTextView: TextView
     private lateinit var balanceIncomeButton: MaterialButton
     private lateinit var balanceExpenseButton: MaterialButton
-    private lateinit var addCategoryButton: MaterialButton
 
     // ===== Receipt Image Handling =====
     private var currentPhotoPath: String? = null
@@ -172,7 +171,6 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             balanceTextView = view.findViewById(R.id.balanceTextView)
             balanceIncomeButton = view.findViewById(R.id.balanceIncomeButton)
             balanceExpenseButton = view.findViewById(R.id.balanceExpenseButton)
-            addCategoryButton = view.findViewById(R.id.addCategoryButton)
             Log.d(TAG, "initializeViews: Views initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing views", e)
@@ -199,9 +197,6 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         balanceExpenseButton.setOnClickListener {
             Log.d(TAG, "Add Expense button clicked.")
             showTransactionDialog(Transaction.Type.EXPENSE)
-        }
-        addCategoryButton.setOnClickListener {
-            showAddCategoryDialog()
         }
     }
 
@@ -694,13 +689,6 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         Log.d(TAG, "showEditTransactionDialog: Dialog shown.")
     }
 
-    private fun showAddCategoryDialog() {
-        Log.d(TAG, "showAddCategoryDialog: Showing dialog to add a new category (Placeholder)")
-        context?.let {
-            Toast.makeText(it, "Add Category dialog would be shown here.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     // ===== TransactionAdapter.OnItemClickListener Implementation =====
     override fun onItemClick(transaction: Transaction) {
         Log.d(TAG, "Transaction item clicked: ${transaction.description}")
@@ -849,17 +837,25 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         var endDateMillis: Long?
 
         try {
+            // Log the current system time
+            val currentTime = System.currentTimeMillis()
+            Log.d(TAG, "Current system time: ${Date(currentTime)}")
+            Log.d(TAG, "Calendar instance time: ${Date(calendar.timeInMillis)}")
+
             when (period) {
                 "This Month" -> {
+                    // Set to first day of current month
                     calendar.set(Calendar.DAY_OF_MONTH, 1)
                     setCalendarToStartOfDay(calendar)
                     startDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "Start of month: ${Date(startDateMillis)}")
 
-                    // End of month calculation (go to start of next month, subtract 1ms)
+                    // Calculate end of month
                     calendar.add(Calendar.MONTH, 1)
                     setCalendarToStartOfDay(calendar)
                     calendar.add(Calendar.MILLISECOND, -1)
                     endDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "End of month: ${Date(endDateMillis)}")
                 }
                 "Last Month" -> {
                     // Go to start of this month
@@ -868,23 +864,27 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                     // Subtract 1ms to get end of last month
                     calendar.add(Calendar.MILLISECOND, -1)
                     endDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "End of last month: ${Date(endDateMillis)}")
 
                     // Calendar is now at the end of last month. Set to start of last month.
                     calendar.set(Calendar.DAY_OF_MONTH, 1)
                     setCalendarToStartOfDay(calendar)
                     calendar.add(Calendar.MONTH, -1)
                     startDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "Start of last month: ${Date(startDateMillis)}")
                 }
                 "This Year" -> {
                     calendar.set(Calendar.DAY_OF_YEAR, 1)
                     setCalendarToStartOfDay(calendar)
                     startDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "Start of year: ${Date(startDateMillis)}")
 
                     // End of year calculation
                     calendar.set(Calendar.MONTH, Calendar.DECEMBER)
                     calendar.set(Calendar.DAY_OF_MONTH, 31)
                     setCalendarToEndOfDay(calendar)
                     endDateMillis = calendar.timeInMillis
+                    Log.d(TAG, "End of year: ${Date(endDateMillis)}")
                 }
                 else -> {
                     Log.w(TAG, "getDateRangeForPeriod: Unknown period '$period'. Returning null.")
@@ -956,17 +956,28 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     // ===== Data Observation Methods =====
     private fun observeTransactions() {
-        val userId = authService.getCurrentUserId() ?: return
+        val userId = try {
+            authService.getCurrentUserId()
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "User not authenticated", e)
+            showToast("Please sign in to view transactions")
+            return
+        }
 
+        Log.d(TAG, "Starting transaction observation for user: $userId")
         lifecycleScope.launch {
             try {
-                transactionRepository.getAllTransactions(authService.getCurrentUserId()).collectLatest { transactions: List<Transaction> ->
-                    Log.d(TAG, "Observed ${transactions.size} transactions. Current date range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
+                transactionRepository.getAllTransactions(userId).collectLatest { transactions: List<Transaction> ->
+                    Log.d(TAG, "Observed ${transactions.size} total transactions")
+                    Log.d(TAG, "Transaction dates: ${transactions.map { Date(it.date) }}")
+                    Log.d(TAG, "Current date range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
                     
                     // Filter transactions by the currently set date range
                     val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
                         transactions.filter { transaction: Transaction ->
-                            transaction.date in currentStartDate..currentEndDate
+                            val isInRange = transaction.date in currentStartDate..currentEndDate
+                            Log.d(TAG, "Transaction ${transaction.description} (${Date(transaction.date)}) in range: $isInRange")
+                            isInRange
                         }
                     } else {
                         // If no specific date range is set, default to "This Month" initially
@@ -977,9 +988,12 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                                 currentEndDate = defaultEnd
                                 Log.d(TAG, "Applying default 'This Month' range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
                                 transactions.filter { transaction: Transaction ->
-                                    transaction.date in currentStartDate..currentEndDate
+                                    val isInRange = transaction.date in currentStartDate..currentEndDate
+                                    Log.d(TAG, "Transaction ${transaction.description} (${Date(transaction.date)}) in default range: $isInRange")
+                                    isInRange
                                 }
                             } else {
+                                Log.w(TAG, "Failed to get default date range")
                                 transactions
                             }
                         } else {
@@ -987,7 +1001,8 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                         }
                     }
 
-                    Log.d(TAG, "Filtered to ${filteredTransactions.size} transactions for current period.")
+                    Log.d(TAG, "Filtered to ${filteredTransactions.size} transactions for current period")
+                    Log.d(TAG, "Filtered transaction dates: ${filteredTransactions.map { Date(it.date) }}")
 
                     // Update adapter with filtered transactions
                     transactionAdapter.submitList(filteredTransactions)
@@ -995,10 +1010,10 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                     // Update UI with transaction data
                     updateTransactionSummary(filteredTransactions)
                     updatePieChart(filteredTransactions)
-                    Log.d(TAG, "UI updated with ${filteredTransactions.size} transactions.")
+                    Log.d(TAG, "UI updated with ${filteredTransactions.size} transactions")
                 }
             } catch (e: CancellationException) {
-                Log.i(TAG, "Transaction observation coroutine cancelled (likely due to lifecycle).")
+                Log.i(TAG, "Transaction observation coroutine cancelled (likely due to lifecycle)")
             } catch (e: Exception) {
                 Log.e(TAG, "Error collecting transactions flow", e)
                 showToast("Error loading transactions: ${e.message}")

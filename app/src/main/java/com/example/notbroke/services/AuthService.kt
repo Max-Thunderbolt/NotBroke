@@ -16,7 +16,7 @@ class AuthService {
     private val auth: FirebaseAuth = Firebase.auth
     
     fun getCurrentUserId(): String {
-        return auth.currentUser?.uid ?: "test_user_id"
+        return auth.currentUser?.uid ?: throw IllegalStateException("User not authenticated")
     }
 
     fun isUserSignedIn(): Boolean {

@@ -15,7 +15,7 @@ import kotlin.jvm.Volatile
         RewardEntity::class,
         UserPreferencesEntity::class
     ],
-    version = 3, // ✅ already updated
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,7 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "notbroke_database"
                 )
-                    .fallbackToDestructiveMigration() // ✅ This line ensures app won't crash on schema changes
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
