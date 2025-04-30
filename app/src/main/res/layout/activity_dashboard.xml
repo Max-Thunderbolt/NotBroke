@@ -255,7 +255,7 @@
 
                             <!-- Income Button -->
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/addIncomeButton"
+                                android:id="@+id/balanceIncomeButton"
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -269,7 +269,7 @@
 
                             <!-- Expense Button -->
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/addExpenseButton"
+                                android:id="@+id/balanceExpenseButton"
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"

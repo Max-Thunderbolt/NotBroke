@@ -1,27 +1,40 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="12dp"
-    android:background="#1A1A1A"
-    android:layout_marginBottom="8dp"
-    android:gravity="center_vertical">
+    android:orientation="vertical"
+    android:background="@drawable/net_worth_card_background"
+    android:padding="16dp"
+    android:layout_marginBottom="12dp">
 
+    <!-- Name -->
+    <TextView
+        android:id="@+id/nameText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Asset Name"
+        android:textSize="16sp"
+        android:textColor="#FF007F"
+        android:textStyle="bold"/>
+
+    <!-- Amount -->
     <TextView
         android:id="@+id/amountText"
-        android:layout_width="0dp"
-        android:layout_weight="1"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FF007F"
         android:text="R0.00"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="4dp"/>
 
+    <!-- Date -->
     <TextView
         android:id="@+id/dateText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        android:text="Apr 20, 2025"
-        android:textSize="14sp" />
+        android:text="Date Here"
+        android:textSize="12sp"
+        android:textColor="#AAAAAA"
+        android:layout_marginTop="2dp"/>
 </LinearLayout>

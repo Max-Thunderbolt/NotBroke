@@ -12,6 +12,7 @@ import java.util.UUID
 data class TransactionEntity(
     @PrimaryKey
     val id: String, // This will store either the Firestore ID or a local UUID
+    val userId: String, // User ID to associate with this transaction
     val type: String,
     val amount: Double,
     val description: String,
@@ -22,22 +23,24 @@ data class TransactionEntity(
 ) {
     // Convert from Transaction model to TransactionEntity
     companion object {
-        fun fromTransaction(transaction: Transaction): TransactionEntity {
-            // *** FIX for "saves only last entry" ***
-            // Generate a unique local UUID if firestoreId is null (new transaction)
-            // Otherwise, use the existing firestoreId as the primary key in Room
+        fun fromTransaction(transaction: Transaction, userId: String = ""): TransactionEntity {
+            // Use the existing firestoreId or generate a new UUID
             val entityId = transaction.firestoreId ?: UUID.randomUUID().toString()
 
             return TransactionEntity(
-                id = entityId, // Use the generated UUID or Firestore ID as the primary key
+                id = entityId,
+                userId = userId,
                 type = transaction.type.name,
                 amount = transaction.amount,
                 description = transaction.description,
                 category = transaction.category,
                 date = transaction.date,
                 receiptImageUri = transaction.receiptImageUri,
-                // syncStatus will be set by the repository when saving/updating/deleting
-                syncStatus = SyncStatus.SYNCED // Default when creating entity, will be overridden
+                // Set appropriate sync status based on whether it's a new or existing transaction
+                syncStatus = when {
+                    transaction.firestoreId == null -> SyncStatus.PENDING_CREATE
+                    else -> SyncStatus.SYNCED // Default for existing transactions
+                }
             )
         }
     }
@@ -45,21 +48,15 @@ data class TransactionEntity(
     // Convert from TransactionEntity to Transaction model
     fun toTransaction(): Transaction {
         return Transaction(
-            // The Transaction model has a Long ID and a String firestoreId.
-            // The Entity's String ID holds the unique key (Firestore ID or local UUID).
-            // We should populate the model's firestoreId from the entity's id.
-            // The model's Long ID might not be necessary or could be handled separately if needed elsewhere.
-            // For now, set the Long ID to 0L as per the model's default and use the entity's ID for firestoreId.
-            id = 0L, // Keeping the default Long ID from the model
+            id = 0L, // Local ID is not used in the model
             firestoreId = this.id, // Use the Entity's String ID as the model's firestoreId
-
+            userId = this.userId, // Pass the userId to the model
             type = Transaction.Type.valueOf(this.type),
             amount = this.amount,
             description = this.description,
             category = this.category,
             date = this.date,
             receiptImageUri = this.receiptImageUri
-            // Do NOT map syncStatus here as the Transaction model doesn't have this field.
         )
     }
 }
