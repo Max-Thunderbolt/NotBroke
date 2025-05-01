@@ -163,6 +163,41 @@
             android:layout_marginTop="16dp"
             android:background="#1E1E1E"
             android:elevation="4dp" />
+        <TextView
+            android:id="@+id/dateRangeSpendingTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Spending Between Dates"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp" />
+
+        <Button
+            android:id="@+id/startDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Start Date"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FFD700"
+            android:textColor="#000000" />
+
+        <Button
+            android:id="@+id/endDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select End Date"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#81C784"
+            android:textColor="#000000" />
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/lineChartDateRange"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:elevation="4dp" />
 
         <!-- Test Transaction Controls -->
         <TextView
