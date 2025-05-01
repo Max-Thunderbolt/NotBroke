@@ -39,6 +39,14 @@
             android:background="#1E1E1E"
             android:elevation="4dp" />
 
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
         <!-- Title for Comparison Chart -->
         <TextView
             android:id="@+id/titleTextViewBottom"
@@ -47,8 +55,7 @@
             android:text="Compare Months"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:layout_marginTop="24dp" />
+            android:textColor="#FFFFFF" />
 
         <!-- Comparison Year Spinner -->
         <Spinner
@@ -120,6 +127,15 @@
                 android:textStyle="bold"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
         <!-- Category Spending Section -->
         <TextView
             android:id="@+id/categorySpendingTitle"
@@ -128,8 +144,7 @@
             android:text="See your spending on a category"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="24dp" />
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -155,7 +170,6 @@
                 android:backgroundTint="#81C784" />
         </LinearLayout>
 
-
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/lineChartCategory"
             android:layout_width="match_parent"
@@ -163,6 +177,16 @@
             android:layout_marginTop="16dp"
             android:background="#1E1E1E"
             android:elevation="4dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Date Range Graph -->
         <TextView
             android:id="@+id/dateRangeSpendingTitle"
             android:layout_width="wrap_content"
@@ -170,8 +194,7 @@
             android:text="Spending Between Dates"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="24dp" />
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/startDateButton"
@@ -199,6 +222,14 @@
             android:background="#1E1E1E"
             android:elevation="4dp" />
 
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
         <!-- Test Transaction Controls -->
         <TextView
             android:layout_width="wrap_content"
@@ -206,8 +237,7 @@
             android:text="Add Test Transaction"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="24dp" />
+            android:textStyle="bold" />
 
         <EditText
             android:id="@+id/amountInput"
