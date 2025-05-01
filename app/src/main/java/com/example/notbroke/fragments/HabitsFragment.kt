@@ -1,57 +1,69 @@
 package com.example.notbroke.fragments
 
+import android.app.DatePickerDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.notbroke.R
+import com.example.notbroke.models.Transaction
 import com.example.notbroke.repositories.RepositoryFactory
 import com.example.notbroke.services.AuthService
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import com.github.mikephil.charting.formatter.ValueFormatter
-import kotlinx.coroutines.flow.collectLatest
+import com.github.mikephil.charting.data.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.*
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 
 class HabitsFragment : Fragment() {
 
     private lateinit var lineChartTop: LineChart
     private lateinit var lineChartBottom: LineChart
-    private lateinit var titleTextView: TextView
-    private lateinit var lastUpdatedTextView: TextView
+    private lateinit var monthSpinner: Spinner
+    private lateinit var compareYearSpinner: Spinner
+    private lateinit var compareMonth1Spinner: Spinner
+    private lateinit var compareMonth2Spinner: Spinner
+    private lateinit var titleTextViewTop: TextView
+    private lateinit var titleTextViewBottom: TextView
+    private lateinit var amountInput: EditText
+    private lateinit var dateButton: Button
+    private lateinit var addTestTransactionBtn: Button
+    private var selectedDate: Calendar = Calendar.getInstance()
+
     private lateinit var repositoryFactory: RepositoryFactory
+    private val transactionRepository by lazy { repositoryFactory.transactionRepository }
     private val authService = AuthService.getInstance()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        repositoryFactory = RepositoryFactory.getInstance(requireContext())
-    }
-
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
         val view = inflater.inflate(R.layout.fragment_habits, container, false)
-        titleTextView = view.findViewById(R.id.titleTextView)
-        lastUpdatedTextView = view.findViewById(R.id.lastUpdatedTextView)
+
+        // Bind views
+        titleTextViewTop = view.findViewById(R.id.titleTextViewTop)
+        titleTextViewBottom = view.findViewById(R.id.titleTextViewBottom)
         lineChartTop = view.findViewById(R.id.lineChartTop)
         lineChartBottom = view.findViewById(R.id.lineChartBottom)
+        monthSpinner = view.findViewById(R.id.monthSpinner)
+        compareYearSpinner = view.findViewById(R.id.compareYearSpinner)
+        compareMonth1Spinner = view.findViewById(R.id.compareMonth1Spinner)
+        compareMonth2Spinner = view.findViewById(R.id.compareMonth2Spinner)
+        amountInput = view.findViewById(R.id.amountInput)
+        dateButton = view.findViewById(R.id.dateButton)
+        addTestTransactionBtn = view.findViewById(R.id.addTestTransactionBtn)
+
+        repositoryFactory = RepositoryFactory.getInstance(requireContext())
 
         setupLineChart(lineChartTop)
         setupLineChart(lineChartBottom)
-
-        loadCurrentMonthSpending()
-        loadYearlySpendingTotals()
+        setupMonthSpinner()
+        setupComparisonSpinners()
+        setupTestTransaction()
 
         return view
     }
@@ -60,162 +72,238 @@ class HabitsFragment : Fragment() {
         chart.apply {
             description.isEnabled = false
             setTouchEnabled(true)
-            setScaleEnabled(true)
             isDragEnabled = true
+            setScaleEnabled(true)
+            setPinchZoom(true)
             setBackgroundColor(Color.TRANSPARENT)
-            animateX(1000)
             axisRight.isEnabled = false
-            legend.isEnabled = false
+            legend.isEnabled = true
 
-            axisLeft.apply {
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
                 textColor = Color.WHITE
-                valueFormatter = object : ValueFormatter() {
-                    override fun getFormattedValue(value: Float): String {
-                        return "R ${value.toInt()}"
-                    }
+                granularity = 1f
+                setDrawGridLines(false)
+            }
+
+            axisLeft.textColor = Color.WHITE
+            animateX(1000)
+            animateY(1000)
+        }
+    }
+
+    private fun setupMonthSpinner() {
+        val months = resources.getStringArray(R.array.months_array)
+        val adapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, months)
+        adapter.setDropDownViewResource(R.layout.spinner_background2)
+        monthSpinner.adapter = adapter
+
+        val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+        monthSpinner.setSelection(currentMonth)
+
+        monthSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                loadCurrentMonthSpending(position)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+    }
+
+    private fun setupComparisonSpinners() {
+        val months = resources.getStringArray(R.array.months_array)
+        val adapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, months)
+        adapter.setDropDownViewResource(R.layout.spinner_background2)
+        compareMonth1Spinner.adapter = adapter
+        compareMonth2Spinner.adapter = adapter
+
+        val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+        compareMonth1Spinner.setSelection(0)
+        compareMonth2Spinner.setSelection(currentMonth)
+
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        val years = (currentYear - 5..currentYear).map { it.toString() }.toTypedArray()
+        val yearAdapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, years)
+        yearAdapter.setDropDownViewResource(R.layout.spinner_background2)
+        compareYearSpinner.adapter = yearAdapter
+        compareYearSpinner.setSelection(years.size - 1)
+
+        val listener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                val month1 = compareMonth1Spinner.selectedItemPosition
+                val month2 = compareMonth2Spinner.selectedItemPosition
+                val year = compareYearSpinner.selectedItem.toString().toInt()
+                loadComparisonGraph(month1, month2, year)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        compareMonth1Spinner.onItemSelectedListener = listener
+        compareMonth2Spinner.onItemSelectedListener = listener
+        compareYearSpinner.onItemSelectedListener = listener
+    }
+
+    private fun setupTestTransaction() {
+        dateButton.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            DatePickerDialog(requireContext(),
+                { _, year, month, dayOfMonth ->
+                    selectedDate.set(year, month, dayOfMonth)
+                    dateButton.text = "${month + 1}/$dayOfMonth/$year"
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        }
+
+        addTestTransactionBtn.setOnClickListener {
+            val amount = amountInput.text.toString().toDoubleOrNull()
+            if (amount != null) {
+                addTestTransaction(selectedDate.timeInMillis, amount)
+            } else {
+                Toast.makeText(requireContext(), "Enter a valid amount", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun addTestTransaction(date: Long, amount: Double) {
+        val userId = authService.getCurrentUserId() ?: return
+
+        val transaction = Transaction(
+            firestoreId = null,
+            userId = userId,
+            type = Transaction.Type.EXPENSE,
+            amount = amount,
+            description = "Test Transaction",
+            category = "Test",
+            date = date,
+            receiptImageUri = null
+        )
+
+        lifecycleScope.launch {
+            transactionRepository.saveTransaction(transaction, userId)
+            val selectedMonth = Calendar.getInstance().apply { timeInMillis = date }.get(Calendar.MONTH)
+            loadCurrentMonthSpending(selectedMonth)
+        }
+    }
+
+    private fun loadCurrentMonthSpending(month: Int) {
+        val userId = authService.getCurrentUserId() ?: return
+
+        val calendarStart = Calendar.getInstance().apply {
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val calendarEnd = (calendarStart.clone() as Calendar).apply {
+            add(Calendar.MONTH, 1)
+        }
+
+        lifecycleScope.launch {
+            try {
+                val transactions = transactionRepository.getTransactionsByDateRange(
+                    calendarStart.timeInMillis,
+                    calendarEnd.timeInMillis,
+                    userId
+                ).first().filter { it.type == Transaction.Type.EXPENSE }
+
+                val dailyTotals = mutableMapOf<Int, Double>()
+                transactions.forEach {
+                    val day = Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_MONTH)
+                    dailyTotals[day] = (dailyTotals[day] ?: 0.0) + it.amount
                 }
-            }
 
-            marker = SpendingMarkerView(requireContext())
+                var runningTotal = 0.0
+                val entries = mutableListOf<Entry>()
+                for (day in 1..31) {
+                    runningTotal += dailyTotals[day] ?: 0.0
+                    entries.add(Entry(day.toFloat(), runningTotal.toFloat()))
+                }
+
+                val dataSet = LineDataSet(entries, "Monthly Spending").apply {
+                    color = Color.CYAN
+                    setDrawCircles(false)
+                    setDrawValues(false)
+                    lineWidth = 2f
+                    setDrawFilled(true)
+                    fillColor = Color.CYAN
+                }
+
+                lineChartTop.data = LineData(dataSet)
+                lineChartTop.invalidate()
+            } catch (e: Exception) {
+                Log.e("HabitsFragment", "Error loading spending data", e)
+            }
         }
     }
 
-    private fun loadCurrentMonthSpending() {
-        val calendarStart = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val calendarEnd = Calendar.getInstance()
+    private fun loadComparisonGraph(month1: Int, month2: Int, year: Int) {
+        val userId = authService.getCurrentUserId() ?: return
 
         lifecycleScope.launch {
             try {
-                val userId = authService.getCurrentUserId() ?: return@launch
-                repositoryFactory.transactionRepository
-                    .getTransactionsByDateRange(calendarStart.timeInMillis, calendarEnd.timeInMillis, userId)
-                    .collectLatest { transactions ->
-                        val dailyTotals = TreeMap<Int, Double>()
+                val dataSets = mutableListOf<ILineDataSet>()
+                val monthsToLoad = listOf(month1 to "Month 1", month2 to "Month 2")
+                val colors = listOf(Color.MAGENTA, Color.YELLOW)
 
-                        transactions.filter { it.type == com.example.notbroke.models.Transaction.Type.EXPENSE }
-                            .forEach { transaction ->
-                                val cal = Calendar.getInstance().apply { timeInMillis = transaction.date }
-                                val day = cal.get(Calendar.DAY_OF_MONTH)
-                                dailyTotals[day] = (dailyTotals[day] ?: 0.0) + transaction.amount
-                            }
+                for ((index, pair) in monthsToLoad.withIndex()) {
+                    val (month, label) = pair
 
-                        val entries = mutableListOf<Entry>()
-                        var runningTotal = 0.0
-                        for (day in 1..calendarEnd.get(Calendar.DAY_OF_MONTH)) {
-                            runningTotal += dailyTotals[day] ?: 0.0
-                            entries.add(Entry(day.toFloat(), runningTotal.toFloat()))
-                        }
-
-                        lineChartTop.xAxis.apply {
-                            setDrawLabels(false)
-                            setDrawGridLines(false)
-                            setDrawAxisLine(false)
-                        }
-
-                        updateLineChart(entries, lineChartTop)
-                        fadeInChart(lineChartTop)
-                        updateLastUpdatedText()
+                    val startCal = Calendar.getInstance().apply {
+                        set(Calendar.YEAR, year)
+                        set(Calendar.MONTH, month)
+                        set(Calendar.DAY_OF_MONTH, 1)
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
                     }
+
+                    val endCal = (startCal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+
+                    val transactions = transactionRepository.getTransactionsByDateRange(
+                        startCal.timeInMillis,
+                        endCal.timeInMillis,
+                        userId
+                    ).first().filter { it.type == Transaction.Type.EXPENSE }
+
+                    val dailyTotals = mutableMapOf<Int, Double>()
+                    transactions.forEach {
+                        val day = Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_MONTH)
+                        dailyTotals[day] = (dailyTotals[day] ?: 0.0) + it.amount
+                    }
+
+                    var runningTotal = 0.0
+                    val entries = mutableListOf<Entry>()
+                    for (day in 1..31) {
+                        runningTotal += dailyTotals[day] ?: 0.0
+                        entries.add(Entry(day.toFloat(), runningTotal.toFloat()))
+                    }
+
+                    val dataSet = LineDataSet(entries, label).apply {
+                        color = colors[index]
+                        setDrawCircles(false)
+                        setDrawValues(false)
+                        lineWidth = 2f
+                        setDrawFilled(true)
+                        fillColor = colors[index]
+                    }
+
+                    dataSets.add(dataSet)
+                }
+
+                lineChartBottom.data = LineData(dataSets)
+                lineChartBottom.invalidate()
+
             } catch (e: Exception) {
-                Log.e("HabitsFragment", "Error loading current month data", e)
-                Toast.makeText(context, "Error loading current month data: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("HabitsFragment", "Error loading comparison graph", e)
             }
         }
-    }
-
-    private fun loadYearlySpendingTotals() {
-        val calendarStart = Calendar.getInstance().apply {
-            set(Calendar.MONTH, Calendar.JANUARY)
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val calendarEnd = Calendar.getInstance()
-
-        lifecycleScope.launch {
-            try {
-                val userId = authService.getCurrentUserId() ?: return@launch
-                repositoryFactory.transactionRepository
-                    .getTransactionsByDateRange(calendarStart.timeInMillis, calendarEnd.timeInMillis, userId)
-                    .collectLatest { transactions ->
-                        val monthTotals = mutableMapOf<Int, Double>()
-
-                        transactions.filter { it.type == com.example.notbroke.models.Transaction.Type.EXPENSE }
-                            .forEach { transaction ->
-                                val cal = Calendar.getInstance().apply { timeInMillis = transaction.date }
-                                val month = cal.get(Calendar.MONTH)
-                                monthTotals[month] = (monthTotals[month] ?: 0.0) + transaction.amount
-                            }
-
-                        val entries = mutableListOf<Entry>()
-                        val monthLabels = mutableListOf<String>()
-
-                        for (month in Calendar.JANUARY..calendarEnd.get(Calendar.MONTH)) {
-                            val total = monthTotals[month] ?: 0.0
-                            entries.add(Entry(month.toFloat(), total.toFloat()))
-
-                            val label = Calendar.getInstance().apply { set(Calendar.MONTH, month) }
-                                .getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.getDefault()) ?: ""
-                            monthLabels.add(label)
-                        }
-
-                        lineChartBottom.xAxis.apply {
-                            setDrawLabels(true)
-                            setDrawGridLines(false)
-                            setDrawAxisLine(true)
-                            granularity = 1f
-                            valueFormatter = object : ValueFormatter() {
-                                override fun getFormattedValue(value: Float): String {
-                                    val index = value.toInt()
-                                    return monthLabels.getOrNull(index) ?: ""
-                                }
-                            }
-                            position = XAxis.XAxisPosition.BOTTOM
-                            textColor = Color.WHITE
-                        }
-
-                        updateLineChart(entries, lineChartBottom)
-                        fadeInChart(lineChartBottom)
-                    }
-            } catch (e: Exception) {
-                Log.e("HabitsFragment", "Error loading yearly totals", e)
-                Toast.makeText(context, "Error loading yearly totals: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun updateLineChart(entries: List<Entry>, chart: LineChart) {
-        val dataSet = LineDataSet(entries, "").apply {
-            color = Color.YELLOW
-            valueTextColor = Color.WHITE
-            lineWidth = 2f
-            setDrawCircles(true)
-            circleRadius = 4f
-            setCircleColor(Color.YELLOW)
-            setDrawValues(false)
-            mode = LineDataSet.Mode.LINEAR
-        }
-        chart.data = LineData(dataSet)
-        chart.invalidate()
-    }
-
-    private fun fadeInChart(chart: LineChart) {
-        chart.alpha = 0f
-        chart.animate().alpha(1f).setDuration(800).start()
-    }
-
-    private fun updateLastUpdatedText() {
-        val today = Calendar.getInstance()
-        val dateStr = "${today.get(Calendar.DAY_OF_MONTH)} ${today.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.getDefault())}"
-        lastUpdatedTextView.text = "Last updated: $dateStr"
     }
 }
