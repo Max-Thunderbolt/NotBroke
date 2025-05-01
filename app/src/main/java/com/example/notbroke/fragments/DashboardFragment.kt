@@ -78,7 +78,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     // ===== UI Components =====
     private lateinit var transactionsRecyclerView: RecyclerView
-    private lateinit var transactionAdapter: TransactionAdapter
+    private lateinit var transactionAdapter: TransactionAdapter 
     private lateinit var pieChart: PieChart
     private lateinit var periodSpinner: Spinner
     private lateinit var totalBudgetTextView: TextView
