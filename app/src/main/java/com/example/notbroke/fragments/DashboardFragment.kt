@@ -1,6 +1,5 @@
 package com.example.notbroke.fragments
 
-// ===== Keep existing imports =====
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -279,6 +278,8 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                     if (startDate != null && endDate != null) {
                         currentStartDate = startDate
                         currentEndDate = endDate
+                        Log.d(TAG, "setupPeriodSpinner: Fetching transactions for period: $selectedPeriod")
+                        observeTransactions() 
                     } else {
                         currentStartDate = 0L
                         currentEndDate = 0L
@@ -970,50 +971,33 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         Log.d(TAG, "Starting transaction observation for user: $userId")
         lifecycleScope.launch {
             try {
-                transactionRepository.getAllTransactions(userId).collectLatest { transactions: List<Transaction> ->
-                    Log.d(TAG, "Observed ${transactions.size} total transactions")
-                    Log.d(TAG, "Transaction dates: ${transactions.map { Date(it.date) }}")
-                    Log.d(TAG, "Current date range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
-                    
-                    // Filter transactions by the currently set date range
-                    val filteredTransactions = if (currentStartDate > 0 && currentEndDate > 0) {
-                        transactions.filter { transaction: Transaction ->
-                            val isInRange = transaction.date in currentStartDate..currentEndDate
-                            Log.d(TAG, "Transaction ${transaction.description} (${Date(transaction.date)}) in range: $isInRange")
-                            isInRange
-                        }
-                    } else {
-                        // If no specific date range is set, default to "This Month" initially
-                        if (currentStartDate == 0L && currentEndDate == 0L) {
-                            val (defaultStart, defaultEnd) = getDateRangeForPeriod("This Month")
-                            if (defaultStart != null && defaultEnd != null) {
-                                currentStartDate = defaultStart
-                                currentEndDate = defaultEnd
-                                Log.d(TAG, "Applying default 'This Month' range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
-                                transactions.filter { transaction: Transaction ->
-                                    val isInRange = transaction.date in currentStartDate..currentEndDate
-                                    Log.d(TAG, "Transaction ${transaction.description} (${Date(transaction.date)}) in default range: $isInRange")
-                                    isInRange
-                                }
-                            } else {
-                                Log.w(TAG, "Failed to get default date range")
-                                transactions
-                            }
-                        } else {
-                            transactions
-                        }
+                // If no specific date range is set, default to "This Month" initially
+                if (currentStartDate == 0L && currentEndDate == 0L) {
+                    val (defaultStart, defaultEnd) = getDateRangeForPeriod("This Month")
+                    if (defaultStart != null && defaultEnd != null) {
+                        currentStartDate = defaultStart
+                        currentEndDate = defaultEnd
+                        Log.d(TAG, "Applying default 'This Month' range: ${Date(currentStartDate)} to ${Date(currentEndDate)}")
                     }
+                }
 
-                    Log.d(TAG, "Filtered to ${filteredTransactions.size} transactions for current period")
-                    Log.d(TAG, "Filtered transaction dates: ${filteredTransactions.map { Date(it.date) }}")
+                // Only observe transactions if we have a valid date range
+                if (currentStartDate > 0 && currentEndDate > 0) {
+                    transactionRepository.getTransactionsByDateRange(currentStartDate, currentEndDate, userId)
+                        .collectLatest { transactions: List<Transaction> ->
+                            Log.d(TAG, "Observed ${transactions.size} transactions for period ${Date(currentStartDate)} to ${Date(currentEndDate)}")
+                            
+                            // Update adapter with transactions
+                            transactionAdapter.submitList(transactions)
 
-                    // Update adapter with filtered transactions
-                    transactionAdapter.submitList(filteredTransactions)
-
-                    // Update UI with transaction data
-                    updateTransactionSummary(filteredTransactions)
-                    updatePieChart(filteredTransactions)
-                    Log.d(TAG, "UI updated with ${filteredTransactions.size} transactions")
+                            // Update UI with transaction data
+                            updateTransactionSummary(transactions)
+                            updatePieChart(transactions)
+                            Log.d(TAG, "UI updated with ${transactions.size} transactions")
+                        }
+                } else {
+                    Log.w(TAG, "Invalid date range, clearing UI data")
+                    clearUiData()
                 }
             } catch (e: CancellationException) {
                 Log.i(TAG, "Transaction observation coroutine cancelled (likely due to lifecycle)")

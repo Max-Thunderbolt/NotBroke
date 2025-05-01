@@ -37,6 +37,11 @@ class HabitsFragment : Fragment() {
     private lateinit var lineChartCategory: LineChart
     private lateinit var categorySpinner: Spinner
     private lateinit var categoryMonthSpinner: Spinner
+    private lateinit var startDateButton: Button
+    private lateinit var endDateButton: Button
+    private lateinit var lineChartDateRange: LineChart
+    private var startDate: Calendar? = null
+    private var endDate: Calendar? = null
 
     private lateinit var repositoryFactory: RepositoryFactory
     private val transactionRepository by lazy { repositoryFactory.transactionRepository }
@@ -63,6 +68,12 @@ class HabitsFragment : Fragment() {
         lineChartCategory = view.findViewById(R.id.lineChartCategory)
         categorySpinner = view.findViewById(R.id.categorySpinner)
         categoryMonthSpinner = view.findViewById(R.id.categoryMonthSpinner)
+        startDateButton = view.findViewById(R.id.startDateButton)
+        endDateButton = view.findViewById(R.id.endDateButton)
+        lineChartDateRange = view.findViewById(R.id.lineChartDateRange)
+
+        setupLineChart(lineChartDateRange)
+        setupDateRangePicker()
 
 
         repositoryFactory = RepositoryFactory.getInstance(requireContext())
@@ -94,8 +105,14 @@ class HabitsFragment : Fragment() {
                 textColor = Color.WHITE
                 granularity = 1f
                 setDrawGridLines(false)
-                labelCount = 15
-                setLabelCount(15, true) // Force 15 visible X-axis labels
+
+                if (chart.id == R.id.lineChartDateRange) {
+                    setDrawLabels(false)
+                    setDrawAxisLine(false)
+                } else {
+                    labelCount = 15
+                    setLabelCount(15, true)
+                }
             }
 
             axisLeft.apply {
@@ -185,6 +202,29 @@ class HabitsFragment : Fragment() {
             } else {
                 Toast.makeText(requireContext(), "Enter a valid amount", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+    private fun setupDateRangePicker() {
+        startDateButton.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+                startDate = Calendar.getInstance().apply { set(year, month, dayOfMonth, 0, 0, 0) }
+                startDateButton.text = "Start: ${dayOfMonth}/${month + 1}/$year"
+                tryLoadDateRangeSpending()
+            },
+                calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        }
+
+        endDateButton.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+                endDate = Calendar.getInstance().apply { set(year, month, dayOfMonth, 23, 59, 59) }
+                endDateButton.text = "End: ${dayOfMonth}/${month + 1}/$year"
+                tryLoadDateRangeSpending()
+            },
+                calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
         }
     }
 
@@ -334,8 +374,10 @@ class HabitsFragment : Fragment() {
     }
     private fun setupCategoryAndMonthSpinners() {
         val categories = listOf(
-            "Air Travel", "Banking", "Groceries", "Fuel", "Dining", "Entertainment",
-            "Shopping", "Insurance", "Utilities", "Education", "Medical", "Other"
+            "Air Travel", "Banking","Clothing & Fashion","Electronics & Appliances" ,"Groceries & Household", "Home & Garden", "Food & Beverage", "Entertainment",
+            "Financial Services", "Insurance", "Gaming & Gambling", "Education", "Health & Wellness", "Mobile & Internet", "Personal Care & Beauty",
+            "Property & Accommodation", "Restaurants & Takeaways", "Shopping & Retail", "Sports & Outdoors", "Transport & Automotive", "Travel & Tourism",
+            "Utilities & Municipal Services", "Other"
         )
         val categoryAdapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, categories)
         categoryAdapter.setDropDownViewResource(R.layout.spinner_background2)
@@ -361,6 +403,47 @@ class HabitsFragment : Fragment() {
 
         categorySpinner.onItemSelectedListener = listener
         categoryMonthSpinner.onItemSelectedListener = listener
+    }
+    private fun tryLoadDateRangeSpending() {
+        val userId = authService.getCurrentUserId() ?: return
+        val start = startDate ?: return
+        val end = endDate ?: return
+
+        if (end.timeInMillis < start.timeInMillis) {
+            Toast.makeText(requireContext(), "End date must be after start date", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val transactions = transactionRepository.getTransactionsByDateRange(
+                    start.timeInMillis, end.timeInMillis, userId
+                ).first().filter { it.type == Transaction.Type.EXPENSE }
+
+                val entries = mutableListOf<Entry>()
+                val sorted = transactions.sortedBy { it.date }
+
+                var runningTotal = 0.0f
+                sorted.forEachIndexed { index, tx ->
+                    runningTotal += tx.amount.toFloat()
+                    entries.add(Entry(index.toFloat(), runningTotal))
+                }
+
+                val dataSet = LineDataSet(entries, "Date Range Spending").apply {
+                    color = Color.MAGENTA
+                    fillColor = Color.MAGENTA
+                    setDrawFilled(true)
+                    setDrawCircles(false)
+                    setDrawValues(false)
+                    lineWidth = 2f
+                }
+
+                lineChartDateRange.data = LineData(dataSet)
+                lineChartDateRange.invalidate()
+            } catch (e: Exception) {
+                Log.e("HabitsFragment", "Error loading date range graph", e)
+            }
+        }
     }
     private fun loadCategorySpending(category: String, month: Int) {
         val userId = authService.getCurrentUserId() ?: return
