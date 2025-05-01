@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface TransactionDao {
-    // *** FIX for deletion not immediately updating UI ***
-    // Filter out transactions marked as PENDING_DELETE
     @Query("SELECT * FROM transactions WHERE syncStatus != :pendingDeleteStatus AND userId = :userId ORDER BY date DESC")
     fun getAllTransactions(pendingDeleteStatus: SyncStatus = SyncStatus.PENDING_DELETE, userId: String): Flow<List<TransactionEntity>>
 
