@@ -34,6 +34,9 @@ class HabitsFragment : Fragment() {
     private lateinit var dateButton: Button
     private lateinit var addTestTransactionBtn: Button
     private var selectedDate: Calendar = Calendar.getInstance()
+    private lateinit var lineChartCategory: LineChart
+    private lateinit var categorySpinner: Spinner
+    private lateinit var categoryMonthSpinner: Spinner
 
     private lateinit var repositoryFactory: RepositoryFactory
     private val transactionRepository by lazy { repositoryFactory.transactionRepository }
@@ -45,6 +48,7 @@ class HabitsFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_habits, container, false)
 
         // Bind views
+
         titleTextViewTop = view.findViewById(R.id.titleTextViewTop)
         titleTextViewBottom = view.findViewById(R.id.titleTextViewBottom)
         lineChartTop = view.findViewById(R.id.lineChartTop)
@@ -56,14 +60,20 @@ class HabitsFragment : Fragment() {
         amountInput = view.findViewById(R.id.amountInput)
         dateButton = view.findViewById(R.id.dateButton)
         addTestTransactionBtn = view.findViewById(R.id.addTestTransactionBtn)
+        lineChartCategory = view.findViewById(R.id.lineChartCategory)
+        categorySpinner = view.findViewById(R.id.categorySpinner)
+        categoryMonthSpinner = view.findViewById(R.id.categoryMonthSpinner)
+
 
         repositoryFactory = RepositoryFactory.getInstance(requireContext())
 
         setupLineChart(lineChartTop)
         setupLineChart(lineChartBottom)
+        setupLineChart(lineChartCategory)
         setupMonthSpinner()
         setupComparisonSpinners()
         setupTestTransaction()
+        setupCategoryAndMonthSpinners()
 
         return view
     }
@@ -84,9 +94,19 @@ class HabitsFragment : Fragment() {
                 textColor = Color.WHITE
                 granularity = 1f
                 setDrawGridLines(false)
+                labelCount = 15
+                setLabelCount(15, true) // Force 15 visible X-axis labels
             }
 
-            axisLeft.textColor = Color.WHITE
+            axisLeft.apply {
+                textColor = Color.WHITE
+                valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return "R%.2f".format(value)
+                    }
+                }
+            }
+
             animateX(1000)
             animateY(1000)
         }
@@ -249,8 +269,14 @@ class HabitsFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val dataSets = mutableListOf<ILineDataSet>()
-                val monthsToLoad = listOf(month1 to "Month 1", month2 to "Month 2")
+                val monthNames = resources.getStringArray(R.array.months_array)
+                val monthsToLoad = listOf(month1 to monthNames[month1], month2 to monthNames[month2])
                 val colors = listOf(Color.MAGENTA, Color.YELLOW)
+                val legend1: TextView = requireView().findViewById(R.id.legendMonth1)
+                val legend2: TextView = requireView().findViewById(R.id.legendMonth2)
+
+                legend1.text = monthNames[month1]
+                legend2.text = monthNames[month2]
 
                 for ((index, pair) in monthsToLoad.withIndex()) {
                     val (month, label) = pair
@@ -303,6 +329,92 @@ class HabitsFragment : Fragment() {
 
             } catch (e: Exception) {
                 Log.e("HabitsFragment", "Error loading comparison graph", e)
+            }
+        }
+    }
+    private fun setupCategoryAndMonthSpinners() {
+        val categories = listOf(
+            "Air Travel", "Banking", "Groceries", "Fuel", "Dining", "Entertainment",
+            "Shopping", "Insurance", "Utilities", "Education", "Medical", "Other"
+        )
+        val categoryAdapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, categories)
+        categoryAdapter.setDropDownViewResource(R.layout.spinner_background2)
+        categorySpinner.adapter = categoryAdapter
+
+        val months = resources.getStringArray(R.array.months_array)
+        val monthAdapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, months)
+        monthAdapter.setDropDownViewResource(R.layout.spinner_background2)
+        categoryMonthSpinner.adapter = monthAdapter
+
+        val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+        categoryMonthSpinner.setSelection(currentMonth)
+
+        val listener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                val selectedCategory = categorySpinner.selectedItem as String
+                val selectedMonth = categoryMonthSpinner.selectedItemPosition
+                loadCategorySpending(selectedCategory, selectedMonth)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        categorySpinner.onItemSelectedListener = listener
+        categoryMonthSpinner.onItemSelectedListener = listener
+    }
+    private fun loadCategorySpending(category: String, month: Int) {
+        val userId = authService.getCurrentUserId() ?: return
+
+        val calendarStart = Calendar.getInstance().apply {
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val calendarEnd = (calendarStart.clone() as Calendar).apply {
+            add(Calendar.MONTH, 1)
+        }
+
+        lifecycleScope.launch {
+            try {
+                val transactions = transactionRepository.getTransactionsByDateRange(
+                    calendarStart.timeInMillis,
+                    calendarEnd.timeInMillis,
+                    userId
+                ).first().filter {
+                    it.type == Transaction.Type.EXPENSE && it.category.equals(category, ignoreCase = true)
+                }
+
+                val dailyTotals = mutableMapOf<Int, Double>()
+                transactions.forEach {
+                    val day = Calendar.getInstance().apply { timeInMillis = it.date }.get(Calendar.DAY_OF_MONTH)
+                    dailyTotals[day] = (dailyTotals[day] ?: 0.0) + it.amount
+                }
+
+                var runningTotal = 0.0
+                val entries = mutableListOf<Entry>()
+                for (day in 1..31) {
+                    runningTotal += dailyTotals[day] ?: 0.0
+                    entries.add(Entry(day.toFloat(), runningTotal.toFloat()))
+                }
+
+                val dataSet = LineDataSet(entries, "$category Spending").apply {
+                    color = Color.CYAN
+                    setDrawCircles(false)
+                    setDrawValues(false)
+                    lineWidth = 2f
+                    setDrawFilled(true)
+                    fillColor = Color.CYAN
+                }
+
+                lineChartCategory.data = LineData(dataSet)
+                lineChartCategory.invalidate()
+
+            } catch (e: Exception) {
+                Log.e("HabitsFragment", "Error loading category spending", e)
             }
         }
     }
