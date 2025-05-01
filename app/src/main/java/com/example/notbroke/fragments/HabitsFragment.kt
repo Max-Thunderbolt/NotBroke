@@ -334,8 +334,10 @@ class HabitsFragment : Fragment() {
     }
     private fun setupCategoryAndMonthSpinners() {
         val categories = listOf(
-            "Air Travel", "Banking", "Groceries", "Fuel", "Dining", "Entertainment",
-            "Shopping", "Insurance", "Utilities", "Education", "Medical", "Other"
+            "Air Travel", "Banking","Clothing & Fashion","Electronics & Appliances" ,"Groceries & Household", "Home & Garden", "Food & Beverage", "Entertainment",
+            "Financial Services", "Insurance", "Gaming & Gambling", "Education", "Health & Wellness", "Mobile & Internet", "Personal Care & Beauty",
+            "Property & Accommodation", "Restaurants & Takeaways", "Shopping & Retail", "Sports & Outdoors", "Transport & Automotive", "Travel & Tourism",
+            "Utilities & Municipal Services", "Other"
         )
         val categoryAdapter = ArrayAdapter(requireContext(), R.layout.spinner_item2, categories)
         categoryAdapter.setDropDownViewResource(R.layout.spinner_background2)
