@@ -24,7 +24,13 @@ data class CategoryEntity(
     companion object {
         fun fromCategory(category: Category): CategoryEntity {
             // Use the existing firestoreId or generate a new UUID
-            val entityId = category.firestoreId ?: UUID.randomUUID().toString()
+            //val entityId = category.firestoreId ?: UUID.randomUUID().toString()
+            val entityId = if (!category.firestoreId.isNullOrBlank()) {
+                category.firestoreId
+            } else {
+                UUID.randomUUID().toString()
+            }
+
             return CategoryEntity(
                 id = entityId,
                 userId = category.userId,

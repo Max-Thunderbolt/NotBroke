@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import android.widget.AutoCompleteTextView
+import android.widget.ArrayAdapter
 
 
 class CategoryRepository(
@@ -34,6 +36,16 @@ class CategoryRepository(
     fun getCategoriesByType(userId: String, type: Category.Type): Flow<List<Category>> {
         return categoryDao.getCategoriesByType(type.name, userId).map { entities ->
             entities.map { it.toCategory() }
+        }
+    }
+
+    suspend fun getCategoryByName(userId: String, categoryName: String): Category? = withContext(Dispatchers.IO) {
+        try {
+            val categories = getAllCategories(userId).first()
+            return@withContext categories.find { it.categoryName == categoryName }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting category by name: ${e.message}", e)
+            null
         }
     }
 
@@ -75,6 +87,7 @@ class CategoryRepository(
                 .copy(syncStatus = SyncStatus.PENDING_UPDATE)
             categoryDao.updateCategory(categoryEntity)
 
+            Log.d(TAG, "Using Firestore ID: ${category.firestoreId}")
             // Update in Firestore
             val firestoreResult = firestoreService.updateCategoryInFirestore(category)
 

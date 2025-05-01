@@ -625,9 +625,17 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         descriptionEditText.setText(transaction.description)
 
         // Setup Category AutoCompleteTextView with categories
-        var allCategories = CategorizationUtils.currentAllCategories.toMutableList().toMutableList()
-        if (allCategories.remove("Other")) {
-            allCategories.add("Other")
+        var allCategories = if (transaction.type == Transaction.Type.INCOME) {
+            CategorizationUtils.incomeCategories
+        } else {
+            CategorizationUtils.expenseCategories
+        }
+        // Move "Other" to the end if it exists
+        allCategories = allCategories.toMutableList().apply {
+            if (contains("Other")) {
+                remove("Other")
+                add("Other")
+            }
         }
         val categoryAdapter = ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, allCategories)
 
