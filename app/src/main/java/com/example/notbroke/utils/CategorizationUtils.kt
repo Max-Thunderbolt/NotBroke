@@ -42,14 +42,20 @@ object CategorizationUtils {
         "Other" to listOf() // Default/fallback
     ).toSortedMap() // Sort categories alphabetically for the dropdown
 
-    // List of all possible categories (used for the dropdown) - now sorted
-    val allCategories: List<String> = (categoryRules.keys.toList() + customIncomeCategories + customExpenseCategories).distinct().sorted()
+    val allCategories: List<String>
+        get() = (categoryRules.keys.toList() + customIncomeCategories + customExpenseCategories).distinct().sorted()
 
-    // Income categories - define separately if needed for the dialog- making changes to now accept custom categories
-    val incomeCategories: List<String> = (listOf("Salary", "Investments", "Freelance", "Gift", "Other Income") + customIncomeCategories).sorted()
+    val incomeCategories: List<String>
+        get() = (listOf("Salary", "Investments", "Freelance", "Gift", "Other Income") + customIncomeCategories).sorted()
 
-    //expense categories - define separately if needed for the dialog- making changes to now accept custom categories
-    val expenseCategories: List<String> = (categoryRules.keys.toList() + customExpenseCategories).sorted()
+    val expenseCategories: List<String>
+        get() = (categoryRules.keys.toList() + customExpenseCategories).distinct().sorted()
+
+    //temp val
+    val currentAllCategories: List<String>
+        get() = (categoryRules.keys + customIncomeCategories + customExpenseCategories)
+            .distinct()
+            .sorted()
 
     // Load categories from database
     suspend fun loadCategoriesFromDatabase(context: Context, userId: String) {
@@ -84,27 +90,33 @@ object CategorizationUtils {
         }
     }
 
-    // add custom income categories
+
+    // Add a custom income category (temporary cache until reload)
     fun addCustomIncomeCategory(category: String) {
         if (!customIncomeCategories.contains(category)) {
             customIncomeCategories.add(category)
         }
     }
-    //remove custom income categories
+
+    // Remove a custom income category
     fun removeCustomIncomeCategory(category: String) {
         customIncomeCategories.remove(category)
     }
 
-    // add custom expense categories
+    // Add a custom expense category (temporary cache until reload)
     fun addCustomExpenseCategory(category: String) {
-        if (!expenseCategories.contains(category)) {
+        if (!customExpenseCategories.contains(category)) {
             customExpenseCategories.add(category)
         }
     }
-    //remove custom expense categories
+
+    // Remove a custom expense category
     fun removeCustomExpenseCategory(category: String) {
         customExpenseCategories.remove(category)
     }
+
+    //function call categories
+
 
 
     /**

@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
+
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.notbroke.R
@@ -19,7 +20,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.widget.ArrayAdapter
 import com.example.notbroke.DAO.AppDatabase
 
 class SettingsFragment : Fragment() {
@@ -36,7 +36,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val addCategoryButton = view.findViewById<Button>(R.id.addCategoryButton)
-
+        val setMonthLimitButton = view.findViewById<Button>(R.id.setMonthLimitButton)
 
         // Load categories when fragment is created
         lifecycleScope.launch {
@@ -52,6 +52,9 @@ class SettingsFragment : Fragment() {
             showAddCategoryDialog()
         }
 
+        setMonthLimitButton.setOnClickListener {
+            Toast.makeText(context, "Monthly limit feature coming soon!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showAddCategoryDialog() {

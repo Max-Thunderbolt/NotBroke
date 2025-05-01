@@ -624,7 +624,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         descriptionEditText.setText(transaction.description)
 
         // Setup Category AutoCompleteTextView with categories
-        var allCategories = CategorizationUtils.allCategories.toMutableList()
+        var allCategories = CategorizationUtils.currentAllCategories.toMutableList().toMutableList()
         if (allCategories.remove("Other")) {
             allCategories.add("Other")
         }
@@ -692,7 +692,10 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     // ===== TransactionAdapter.OnItemClickListener Implementation =====
     override fun onItemClick(transaction: Transaction) {
         Log.d(TAG, "Transaction item clicked: ${transaction.description}")
-        showEditTransactionDialog(transaction)
+        lifecycleScope.launch {
+            CategorizationUtils.loadCategoriesFromDatabase(requireContext(),authService.getCurrentUserId())
+            showEditTransactionDialog(transaction)
+        }
     }
 
     // ===== Transaction Data Methods =====
