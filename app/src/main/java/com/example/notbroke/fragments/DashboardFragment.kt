@@ -61,6 +61,7 @@ import com.example.notbroke.services.FirestoreService
 import com.example.notbroke.services.AuthService
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 
 /**
  * DashboardFragment displays the user's financial overview including transactions,
@@ -99,6 +100,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     // ===== Repositories and Services =====
     private lateinit var repositoryFactory: RepositoryFactory
     private val transactionRepository by lazy { repositoryFactory.transactionRepository }
+    private val categoryRepository by lazy { repositoryFactory.categoryRepository }
     private val authService = AuthService.getInstance()
 
     // ===== Date Range Tracking =====
@@ -819,14 +821,18 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     private fun updateTransactionSummary(transactions: List<Transaction>) {
         updateBalance(transactions)
+
         // Calculate total spent ONLY for Expense type transactions within the current date range
         val totalSpent = transactions
             .filter { it.type == Transaction.Type.EXPENSE }
             .sumOf { it.amount }
         totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
 
-        totalBudgetTextView.text = "R ----.--" // TODO: Load actual budget for the period
-        remainingTextView.text = "R ----.--" // TODO: Calculate remaining based on budget and spent
+        // Get the current period from the spinner
+        val currentPeriod = periodSpinner.selectedItem as? String ?: "This Month"
+        
+        // Update budget information
+        updateBudgetInformation(transactions)
     }
 
     private fun clearUiData() {
@@ -1001,6 +1007,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                             // Update UI with transaction data
                             updateTransactionSummary(transactions)
                             updatePieChart(transactions)
+                            updateBudgetInformation(transactions)
                             Log.d(TAG, "UI updated with ${transactions.size} transactions")
                         }
                 } else {
@@ -1012,6 +1019,58 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             } catch (e: Exception) {
                 Log.e(TAG, "Error collecting transactions flow", e)
                 showToast("Error loading transactions: ${e.message}")
+            }
+        }
+    }
+
+    private fun updateBudgetInformation(transactions: List<Transaction>) {
+        lifecycleScope.launch {
+            try {
+                val userId = try {
+                    authService.getCurrentUserId()
+                } catch (e: IllegalStateException) {
+                    Log.e(TAG, "User not authenticated", e)
+                    showToast("Please sign in to view transactions")
+                    return@launch
+                }
+
+                // Get all categories with their monthly limits using repository factory
+                val categories = categoryRepository.getAllCategories(userId).first()
+                val totalMonthlyBudget = categories.sumOf { it.monthLimit ?: 0.0 }
+                
+                // Calculate total spent in the current month
+                val calendar = Calendar.getInstance()
+                val currentMonth = calendar.get(Calendar.MONTH)
+                val currentYear = calendar.get(Calendar.YEAR)
+                
+                val totalSpent = transactions
+                    .filter { 
+                        val transactionDate = Calendar.getInstance().apply { timeInMillis = it.date }
+                        transactionDate.get(Calendar.MONTH) == currentMonth && 
+                        transactionDate.get(Calendar.YEAR) == currentYear &&
+                        it.type == Transaction.Type.EXPENSE
+                    }
+                    .sumOf { it.amount }
+                
+                val remainingBudget = totalMonthlyBudget - totalSpent
+                
+                // Update UI
+                activity?.runOnUiThread {
+                    totalBudgetTextView.text = "Total Budget: R${String.format("%.2f", totalMonthlyBudget)}"
+                    totalSpentTextView.text = "Total Spent: R${String.format("%.2f", totalSpent)}"
+                    remainingTextView.text = "Remaining: R${String.format("%.2f", remainingBudget)}"
+                    
+                    // Update text colors based on remaining budget
+                    val color = if (remainingBudget < 0) {
+                        ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
+                    } else {
+                        ContextCompat.getColor(requireContext(), android.R.color.holo_green_light)
+                    }
+                    remainingTextView.setTextColor(color)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating budget information", e)
+                showToast("Error calculating budget information")
             }
         }
     }
