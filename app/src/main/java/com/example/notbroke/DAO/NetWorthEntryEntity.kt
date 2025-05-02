@@ -13,21 +13,23 @@ data class NetWorthEntryEntity(
     @PrimaryKey
     val id: String,
     val userId: String,
+    val name: String,              // <-- Added
     val amount: Double,
-    val date: Long, // Stored as timestamp in milliseconds
+    val date: Long,                // Stored as timestamp in milliseconds
     val syncStatus: SyncStatus = SyncStatus.SYNCED
 ) {
     // Convert from NetWorthEntry model to NetWorthEntryEntity
     companion object {
         fun fromNetWorthEntry(
-            entry: NetWorthEntry, 
-            userId: String, 
+            entry: NetWorthEntry,
+            userId: String,
             id: String,
             syncStatus: SyncStatus = SyncStatus.SYNCED
         ): NetWorthEntryEntity {
             return NetWorthEntryEntity(
                 id = id,
                 userId = userId,
+                name = entry.name,                 // <-- Set name
                 amount = entry.amount,
                 date = entry.date.time,
                 syncStatus = syncStatus
@@ -40,8 +42,9 @@ data class NetWorthEntryEntity(
         return NetWorthEntry(
             id = id,
             userId = userId,
+            name = name,                          // <-- Use name
             amount = amount,
             date = Date(date)
         )
     }
-} 
+}

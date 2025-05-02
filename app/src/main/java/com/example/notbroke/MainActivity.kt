@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.notbroke.services.AuthService
 import com.google.firebase.auth.FirebaseUser
+import com.example.notbroke.utils.CategorizationUtils
 
 /**
  * MainActivity handles user authentication including:

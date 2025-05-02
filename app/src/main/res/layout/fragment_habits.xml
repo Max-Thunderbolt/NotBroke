@@ -1,55 +1,273 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:padding="16dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#121017">
 
-    <TextView
-        android:id="@+id/titleTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Your Spending Habits"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="12dp" />
-
-    <!-- Spinner to select month -->
-    <Spinner
-        android:id="@+id/monthSpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:backgroundTint="#FFD700"
-        android:layout_marginBottom="16dp" />
-
-    <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/lineChart"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="400dp"
-        android:layout_marginBottom="8dp"
-        android:background="#1E1E1E" />
-
-    <TextView
-        android:id="@+id/xAxisLabel"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Days"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="20dp" />
-    <Button
-        android:id="@+id/btnAddTestTransaction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Add Test Transaction"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#FFD700"
-        android:layout_marginBottom="12dp"/>
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
 
-</LinearLayout>
+        <!-- Title for Top Graph -->
+        <TextView
+            android:id="@+id/titleTextViewTop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your Spending Habits by Month"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="16dp" />
+
+        <!-- Spinner to select the month -->
+        <Spinner
+            android:id="@+id/monthSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FFD700" />
+
+        <!-- Top Line Chart -->
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/lineChartTop"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:elevation="4dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Title for Comparison Chart -->
+        <TextView
+            android:id="@+id/titleTextViewBottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Compare Months"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF" />
+
+        <!-- Comparison Year Spinner -->
+        <Spinner
+            android:id="@+id/compareYearSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FFD700" />
+
+        <!-- Comparison Month Spinners -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <Spinner
+                android:id="@+id/compareMonth1Spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="#FF8A65"
+                android:layout_marginEnd="8dp" />
+
+            <Spinner
+                android:id="@+id/compareMonth2Spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="#81C784"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Bottom Line Chart -->
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/lineChartBottom"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:elevation="4dp" />
+
+        <!-- Comparison Graph Legend -->
+        <LinearLayout
+            android:id="@+id/legendContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/legendMonth1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Month 1"
+                android:textColor="#FF00FF"
+                android:textStyle="bold"
+                android:layout_marginEnd="16dp"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/legendMonth2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Month 2"
+                android:textColor="#FFFF00"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Category Spending Section -->
+        <TextView
+            android:id="@+id/categorySpendingTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="See your spending on a category"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center">
+
+            <Spinner
+                android:id="@+id/categorySpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:backgroundTint="#FFD700" />
+
+            <Spinner
+                android:id="@+id/categoryMonthSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="#81C784" />
+        </LinearLayout>
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/lineChartCategory"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:elevation="4dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Date Range Graph -->
+        <TextView
+            android:id="@+id/dateRangeSpendingTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Spending Between Dates"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/startDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Start Date"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FFD700"
+            android:textColor="#000000" />
+
+        <Button
+            android:id="@+id/endDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select End Date"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#81C784"
+            android:textColor="#000000" />
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/lineChartDateRange"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
+            android:background="#1E1E1E"
+            android:elevation="4dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#444444"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Test Transaction Controls -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add Test Transaction"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/amountInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter amount"
+            android:inputType="numberDecimal"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#AAAAAA"
+            android:backgroundTint="#FFD700"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/dateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pick Date"
+            android:textColor="#000000"
+            android:backgroundTint="#FFD700"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/addTestTransactionBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add Test Transaction"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#00C853"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp" />
+
+    </LinearLayout>
+</ScrollView>

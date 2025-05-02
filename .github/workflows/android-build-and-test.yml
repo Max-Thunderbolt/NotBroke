@@ -1,0 +1,65 @@
+name: Android Build and Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      checks: write
+      pull-requests: write
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Run Unit Tests
+      run: ./gradlew test
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: app/build/test-results/
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: app/build/outputs/apk/release/app-release.apk
+
+    - name: Run Lint
+      run: ./gradlew lint
+
+    - name: Upload Lint Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: lint-report
+        path: app/build/reports/lint-results.html 

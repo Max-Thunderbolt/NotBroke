@@ -63,6 +63,14 @@ class SyncService : Service() {
             // Sync user preferences
             repositoryFactory.userPreferencesRepository.syncPreferences(userId)
             Log.d(TAG, "User preferences synced successfully")
+
+            // Sync user transactions
+            repositoryFactory.transactionRepository.syncTransactions(userId)
+            Log.d(TAG, "Transactions synced successfully")
+
+            // Sync categories
+            repositoryFactory.categoryRepository.syncCategories(userId)
+            Log.d(TAG, "Categories synced successfully")
             
             Log.d(TAG, "All data synced successfully")
         } catch (e: Exception) {

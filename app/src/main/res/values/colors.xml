@@ -7,4 +7,5 @@
     <color name="gold">#FFD700</color>
     <color name="income_green">#4CAF50</color>
     <color name="expense_red">#F44336</color>
+    <color name="light_pink">#FFB6C1</color>
 </resources>

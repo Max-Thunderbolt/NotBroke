@@ -10,7 +10,7 @@ data class Debt(
     val totalAmount: Double = 0.0,
     var amountPaid: Double = 0.0,
     val interestRate: Double = 0.0,
-    val monthlyPayment: Double = 0.0,
+    var monthlyPayment: Double = 0.0,
     val creationDate: Long = System.currentTimeMillis(),
     var lastPaymentDate: Long? = null
 ) {
@@ -70,6 +70,7 @@ data class Debt(
      * Makes a payment on the debt and updates the paid amount
      */
     fun makePayment(amount: Double): Double {
+        if (amount <= 0) return 0.0
         val remaining = getRemainingBalance()
         val paymentToApply = amount.coerceAtMost(remaining)
         

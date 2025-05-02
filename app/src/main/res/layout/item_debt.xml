@@ -173,15 +173,6 @@
                 android:textColor="#E91E63"
                 android:textSize="12sp"
                 android:layout_marginEnd="8dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/makePaymentButton"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="MAKE PAYMENT"
-                android:textColor="#4CAF50"
-                android:textSize="12sp"/>
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView> 
