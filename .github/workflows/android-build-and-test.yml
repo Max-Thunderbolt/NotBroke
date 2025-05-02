@@ -2,9 +2,9 @@ name: Android Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ MaxvanderWalt-AutomatedTesting ]
   pull_request:
-    branches: [ main ]
+    branches: [ MaxvanderWalt-AutomatedTesting ]
 
 jobs:
   build-and-test:
