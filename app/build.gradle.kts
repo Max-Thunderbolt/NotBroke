@@ -96,6 +96,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation(libs.firebase.crashlytics.buildtools)
 
+    // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("org.mockito:mockito-core:5.3.1")
