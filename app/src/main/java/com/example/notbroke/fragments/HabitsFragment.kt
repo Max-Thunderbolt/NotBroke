@@ -1,5 +1,6 @@
 package com.example.notbroke.fragments
 
+import com.google.android.material.datepicker.MaterialDatePicker
 import android.app.DatePickerDialog
 import android.graphics.Color
 import android.os.Bundle
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.*
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import java.text.SimpleDateFormat
 
 class HabitsFragment : Fragment() {
 
@@ -183,17 +185,20 @@ class HabitsFragment : Fragment() {
 
     private fun setupTestTransaction() {
         dateButton.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(requireContext(),
-                { _, year, month, dayOfMonth ->
-                    selectedDate.set(year, month, dayOfMonth)
-                    dateButton.text = "${month + 1}/$dayOfMonth/$year"
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
+            val picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("Select Date")
+                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+                .build()
+
+            picker.addOnPositiveButtonClickListener { selection ->
+                selectedDate.timeInMillis = selection
+                val formatted = java.text.SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(selectedDate.time)
+                dateButton.text = formatted
+            }
+
+            picker.show(parentFragmentManager, "MATERIAL_DATE_PICKER")
         }
+
 
         addTestTransactionBtn.setOnClickListener {
             val amount = amountInput.text.toString().toDoubleOrNull()
@@ -206,26 +211,50 @@ class HabitsFragment : Fragment() {
     }
     private fun setupDateRangePicker() {
         startDateButton.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
-                startDate = Calendar.getInstance().apply { set(year, month, dayOfMonth, 0, 0, 0) }
-                startDateButton.text = "Start: ${dayOfMonth}/${month + 1}/$year"
+            val picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("Select Start Date")
+                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+                .build()
+
+            picker.addOnPositiveButtonClickListener { selection ->
+                startDate = Calendar.getInstance().apply {
+                    timeInMillis = selection
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val formatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(startDate!!.time)
+                startDateButton.text = "Start: $formatted"
                 tryLoadDateRangeSpending()
-            },
-                calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
+            }
+
+            picker.show(parentFragmentManager, "START_DATE_PICKER")
         }
 
+
         endDateButton.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
-                endDate = Calendar.getInstance().apply { set(year, month, dayOfMonth, 23, 59, 59) }
-                endDateButton.text = "End: ${dayOfMonth}/${month + 1}/$year"
+            val picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("Select End Date")
+                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+                .build()
+
+            picker.addOnPositiveButtonClickListener { selection ->
+                endDate = Calendar.getInstance().apply {
+                    timeInMillis = selection
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                val formatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(endDate!!.time)
+                endDateButton.text = "End: $formatted"
                 tryLoadDateRangeSpending()
-            },
-                calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
+            }
+
+            picker.show(parentFragmentManager, "END_DATE_PICKER")
         }
+
     }
 
     private fun addTestTransaction(date: Long, amount: Double) {
