@@ -19,6 +19,7 @@ import com.example.notbroke.fragments.NetWorthFragment
 import com.example.notbroke.fragments.SettingsFragment
 import com.google.android.material.button.MaterialButton
 import com.example.notbroke.services.AuthService
+import com.example.notbroke.services.SyncService
 import com.example.notbroke.utils.CategorizationUtils
 
 class HomeActivity : AppCompatActivity() {
@@ -43,6 +44,9 @@ class HomeActivity : AppCompatActivity() {
             super.onCreate(savedInstanceState)
             setContentView(R.layout.activity_home)
 
+            // Start sync service
+            val userId = AuthService.getInstance().getCurrentUserId()
+            SyncService.startSync(this, userId)
 
             // Initialize drawer components
             drawerLayout = findViewById(R.id.drawerLayout)

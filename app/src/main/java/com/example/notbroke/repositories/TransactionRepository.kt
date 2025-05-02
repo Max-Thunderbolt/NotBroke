@@ -13,6 +13,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import java.util.UUID
+import java.util.Date
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Repository for handling transaction data from both local database and Firestore
@@ -22,6 +25,7 @@ class TransactionRepository(
     private val firestoreService: FirestoreService
 ) {
     private val TAG = "TransactionRepository"
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     // Get all transactions as Flow (modified in DAO to filter PENDING_DELETE)
     fun getAllTransactions(userId: String): Flow<List<Transaction>> = 
@@ -193,14 +197,55 @@ class TransactionRepository(
     }
 
     /**
-     * Get transactions by date range
+     * Debug method to check database state
      */
+    suspend fun debugDatabaseState(userId: String) = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "Debugging database state for user: $userId")
+            
+            // Get all transactions without any filtering
+            val allTransactions = transactionDao.getAllTransactions(userId = userId).first()
+            Log.d(TAG, "Total transactions in database: ${allTransactions.size}")
+            
+            // Log details of each transaction
+            allTransactions.forEach { entity ->
+                Log.d(TAG, """
+                    Transaction Details:
+                    - ID: ${entity.id}
+                    - UserID: ${entity.userId}
+                    - Date: ${Date(entity.date)}
+                    - Type: ${entity.type}
+                    - Amount: ${entity.amount}
+                    - Description: ${entity.description}
+                    - SyncStatus: ${entity.syncStatus}
+                """.trimIndent())
+            }
+            
+            // Check if any transactions are marked for deletion
+            val pendingDeleteCount = allTransactions.count { it.syncStatus == SyncStatus.PENDING_DELETE }
+            Log.d(TAG, "Transactions marked for deletion: $pendingDeleteCount")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error debugging database state", e)
+        }
+    }
+
     fun getTransactionsByDateRange(startDate: Long, endDate: Long, userId: String): Flow<List<Transaction>> {
-        // This matches TransactionDao.getTransactionsByDateRange signature
-        // The DAO query itself doesn't need sync status filtering here unless you want
-        // date-ranged queries to also exclude PENDING_DELETE items.
+        Log.d(TAG, "getTransactionsByDateRange: Querying for userId=$userId, startDate=${Date(startDate)}, endDate=${Date(endDate)}")
+        
+        // Debug database state
+        scope.launch {
+            debugDatabaseState(userId)
+        }
+        
         return transactionDao.getTransactionsByDateRange(startDate, endDate, userId)
-            .map { entities -> entities.map { it.toTransaction() } }
+            .map { entities -> 
+                Log.d(TAG, "getTransactionsByDateRange: Retrieved ${entities.size} entities from DAO")
+                entities.forEach { entity ->
+                    Log.d(TAG, "Entity: id=${entity.id}, date=${Date(entity.date)}, syncStatus=${entity.syncStatus}, userId=${entity.userId}")
+                }
+                entities.map { it.toTransaction() }
+            }
     }
 
     /**
@@ -331,12 +376,18 @@ class TransactionRepository(
             // 1. First, sync any pending transactions to Firestore
             syncPendingTransactions(userId)
             
-            // 2. Then, load transactions from Firestore for the user
-            // We'll use a reasonable date range (e.g., last 3 months)
-            val endDate = System.currentTimeMillis()
-            val startDate = endDate - (90L * 24 * 60 * 60 * 1000) // 90 days ago
+            // 2. Then, load all transactions from Firestore for the user
+            val firestoreTransactions = firestoreService.observeTransactions(userId).first()
+            Log.d(TAG, "Loaded ${firestoreTransactions.size} transactions from Firestore")
             
-            loadTransactionsFromFirestore(userId, startDate, endDate)
+            // Convert to entities and save to local database
+            val firestoreEntities = firestoreTransactions.map { transaction ->
+                TransactionEntity.fromTransaction(transaction.copy(userId = userId), userId = userId)
+                    .copy(syncStatus = SyncStatus.SYNCED)
+            }
+            
+            transactionDao.insertTransactions(firestoreEntities)
+            Log.d(TAG, "Saved ${firestoreEntities.size} transactions to local database")
             
             Log.d(TAG, "Unified sync completed successfully")
         } catch (e: Exception) {
