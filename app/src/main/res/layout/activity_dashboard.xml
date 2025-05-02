@@ -8,7 +8,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".HomeActivity">
-
     <!-- Main Content -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/dashboard_activity"

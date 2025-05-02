@@ -32,16 +32,16 @@ class NetWorthEntryTest {
     @Test
     fun `test NetWorthEntry equality`() {
         val date = Date()
-        val entry1 = NetWorthEntry("id1", "user1", 100.0, date)
-        val entry2 = NetWorthEntry("id1", "user1", 100.0, date)
-        val entry3 = NetWorthEntry("id2", "user2", 200.0, date)
+        val entry1 = NetWorthEntry("id1", "user1", "Entry1" ,100.0, date)
+        val entry2 = NetWorthEntry("id1", "user1", "Entry1",100.0, date)
+        val entry3 = NetWorthEntry("id2", "user2", "Entry3", 200.0, date)
         assertEquals(entry1, entry2)
         assertNotEquals(entry1, entry3)
     }
 
     @Test
     fun `test NetWorthEntry toString`() {
-        val entry = NetWorthEntry("id1", "user1", 100.0, Date(0))
+        val entry = NetWorthEntry("id1", "user1", "NetworthEntry",100.0, Date(0))
         val str = entry.toString()
         assertTrue(str.contains("id1"))
         assertTrue(str.contains("user1"))
