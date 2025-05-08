@@ -1056,9 +1056,9 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                 
                 // Update UI
                 activity?.runOnUiThread {
-                    totalBudgetTextView.text = "Total Budget: R${String.format("%.2f", totalMonthlyBudget)}"
-                    totalSpentTextView.text = "Total Spent: R${String.format("%.2f", totalSpent)}"
-                    remainingTextView.text = "Remaining: R${String.format("%.2f", remainingBudget)}"
+                    totalBudgetTextView.text = "${String.format("%.2f", totalMonthlyBudget)}"
+                    totalSpentTextView.text = "${String.format("%.2f", totalSpent)}"
+                    remainingTextView.text = "${String.format("%.2f", remainingBudget)}"
                     
                     // Update text colors based on remaining budget
                     val color = if (remainingBudget < 0) {
