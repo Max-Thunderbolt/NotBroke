@@ -31,6 +31,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE type = :type AND userId = :userId ORDER BY date DESC")
     fun getTransactionsByType(type: String, userId: String): Flow<List<TransactionEntity>>
 
+    @Query("SELECT SUM(amount) FROM transactions WHERE userId = :userId AND category = :categoryName AND date BETWEEN :startDate AND :endDate AND type = 'EXPENSE' AND syncStatus != :pendingDeleteStatus")
+    fun getTotalSpendForCategoryInDateRange(userId: String, categoryName: String, startDate: Long, endDate: Long, pendingDeleteStatus: SyncStatus = SyncStatus.PENDING_DELETE): Flow<Double?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity)
 

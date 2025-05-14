@@ -8,4 +8,13 @@
     <color name="income_green">#4CAF50</color>
     <color name="expense_red">#F44336</color>
     <color name="light_pink">#FFB6C1</color>
+    <color name="material_red_700">#D32F2F</color>
+    <color name="dashboard_yellow_accent">#F2DD3E</color>
+    <color name="dashboard_pink_accent">#E91E63</color>
+    <color name="dashboard_text_primary">#EAEAEA</color>
+    <color name="dashboard_text_secondary">#A0A0A0</color>
+    <color name="dashboard_card_background">#1E1E1E</color>
+    <color name="dashboard_main_background">#121017</color>
+    <color name="positive_green">#4CAF50</color>
+    <color name="negative_red">#F44336</color>
 </resources>

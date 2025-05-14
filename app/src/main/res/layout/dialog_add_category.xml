@@ -1,93 +1,92 @@
-<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-android:layout_width="match_parent"
-android:layout_height="wrap_content"
-android:orientation="vertical"
-android:padding="16dp"
-    android:background="#1E1E1E">
-
-<TextView
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:text="Add New Category"
-    android:textSize="20sp"
-    android:textStyle="bold"
-    android:gravity="center"
-    android:layout_marginBottom="16dp"
-    android:textColor="@color/gold"/>
-
-<com.google.android.material.textfield.TextInputLayout
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@color/dashboard_card_background"> <com.google.android.material.textfield.TextInputLayout
+    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="16dp"
-    android:hint="Category Name">
-
+    android:layout_marginBottom="12dp"
+    android:textColorHint="#B0B0B0"
+    app:boxStrokeColor="@color/dashboard_pink_accent"
+    app:hintTextColor="@color/dashboard_pink_accent">
     <com.google.android.material.textfield.TextInputEditText
         android:id="@+id/categoryNameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:inputType="text"
-        android:maxLines="1"/>
-
+        android:hint="Category Name"
+        android:textColor="@color/dashboard_text_primary"
+        android:inputType="textCapWords"/>
 </com.google.android.material.textfield.TextInputLayout>
+
     <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:hint="Category Keyword">
-
+        android:textColorHint="#B0B0B0"
+        app:boxStrokeColor="@color/dashboard_pink_accent"
+        app:hintTextColor="@color/dashboard_pink_accent">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/categoryKeyWordInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1"/>
-
+            android:hint="Keyword (Optional)"
+            android:textColor="@color/dashboard_text_primary"
+            android:inputType="text"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-<RadioGroup
-    android:id="@+id/categoryTypeGroup"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center"
-    android:layout_marginBottom="16dp">
-
-    <RadioButton
-        android:id="@+id/incomeRadioButton"
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Income"
-        android:layout_marginEnd="16dp"/>
-
-    <RadioButton
-        android:id="@+id/expenseRadioButton"
-        android:layout_width="wrap_content"
+        android:text="Category Type"
+        android:textColor="@color/dashboard_text_secondary"
+        android:layout_marginBottom="4dp"/>
+    <RadioGroup
+        android:id="@+id/categoryTypeGroup"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Expense"
-        android:checked="true"/>
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+        <RadioButton
+            android:id="@+id/expenseRadioButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Expense"
+            android:checked="true"
+            android:textColor="@color/dashboard_text_primary"
+            app:buttonTint="@color/dashboard_pink_accent"/>
+        <RadioButton
+            android:id="@+id/incomeRadioButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Income"
+            android:layout_marginStart="16dp"
+            android:textColor="@color/dashboard_text_primary"
+            app:buttonTint="@color/dashboard_pink_accent"/>
+    </RadioGroup>
 
-</RadioGroup>
-
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="end">
-
-    <Button
-        android:id="@+id/cancelCategoryButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Cancel"
-        android:layout_marginEnd="8dp"/>
-
-    <Button
-        android:id="@+id/addCategoryButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Add"/>
-
-</LinearLayout>
-
+        android:orientation="horizontal">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelCategoryButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/dashboard_text_secondary"
+            android:layout_marginEnd="8dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/addCategoryDialogButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Add Category"
+            app:backgroundTint="@color/dashboard_pink_accent"/>
+    </LinearLayout>
 </LinearLayout>

@@ -11,6 +11,32 @@
         <item name="textInputStyle">@style/AppTheme.TextInputLayout</item>
         <!-- Button Style -->
         <item name="materialButtonStyle">@style/AppTheme.Button</item>
+
+    </style>
+
+    <style name="Theme.NotBroke" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="alertDialogTheme">@style/AlertDialogTheme</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
+    </style>
+
+    <style name="AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">@color/dashboard_card_background</item> <item name="materialAlertDialogTitleTextStyle">@style/MaterialAlertDialogTitleTextStyle</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/MaterialAlertDialogBodyTextStyle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/AlertDialogButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/AlertDialogButtonStyle</item>
+        <item name="buttonBarNeutralButtonStyle">@style/AlertDialogButtonStyle</item>
+    </style>
+
+    <style name="MaterialAlertDialogTitleTextStyle" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textColor">@color/dashboard_text_primary</item>
+    </style>
+
+    <style name="MaterialAlertDialogBodyTextStyle" parent="MaterialAlertDialog.MaterialComponents.Body.Text">
+        <item name="android:textColor">@color/dashboard_text_secondary</item>
+    </style>
+
+    <style name="AlertDialogButtonStyle" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/dashboard_pink_accent</item>
     </style>
 
     <style name="Base.Theme.BudgetApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">

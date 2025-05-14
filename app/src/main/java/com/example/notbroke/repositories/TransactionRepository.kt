@@ -455,7 +455,7 @@ class TransactionRepository(
 
                         val result = firestoreService.updateTransactionInFirestore(transactionWithUserId)
                         if (result.isSuccess) {
-                            return 
+                            return
                         }
                     }
                 }
@@ -478,5 +478,10 @@ class TransactionRepository(
         }
         
         Log.e(TAG, "All retry attempts failed for transaction: ${transaction.description}")
+    }
+
+    fun getTotalSpendForCategoryInDateRange(userId: String, categoryName: String, startDate: Long, endDate: Long): Flow<Double?> {
+        return transactionDao.getTotalSpendForCategoryInDateRange(userId, categoryName, startDate, endDate)
+            .map { it ?: 0.0 } // Return 0.0 if sum is null (no transactions)
     }
 }

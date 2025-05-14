@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/categoryNameTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            tools:text="Groceries"
+            android:textColor="#EAEAEA"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/categoryProgressTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="R500 / R1000"
+            android:textColor="#A0A0A0"
+            android:textSize="12sp"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/categoryProgressBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        app:indicatorColor="#F2DD3E"
+        app:trackColor="#4A4A4A"
+        app:trackThickness="6dp"
+        app:trackCornerRadius="3dp"
+        tools:progress="50" />
+</LinearLayout>

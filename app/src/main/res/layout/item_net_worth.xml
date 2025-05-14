@@ -1,40 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/net_worth_card_background"
-    android:padding="16dp"
-    android:layout_marginBottom="12dp">
+    app:cardBackgroundColor="#2A2A2A"
+    app:cardCornerRadius="8dp"
+    app:strokeWidth="0dp"
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="8dp">
 
-    <!-- Name -->
-    <TextView
-        android:id="@+id/nameText"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Asset Name"
-        android:textSize="16sp"
-        android:textColor="#FF007F"
-        android:textStyle="bold"/>
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
-    <!-- Amount -->
-    <TextView
-        android:id="@+id/amountText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="R0.00"
-        android:textSize="14sp"
-        android:textColor="#FFFFFF"
-        android:layout_marginTop="4dp"/>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <!-- Date -->
-    <TextView
-        android:id="@+id/dateText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Date Here"
-        android:textSize="12sp"
-        android:textColor="#AAAAAA"
-        android:layout_marginTop="2dp"/>
-</LinearLayout>
+            <TextView
+                android:id="@+id/itemNameTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="Savings Account"
+                android:textColor="#EAEAEA"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/itemDateTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="Jan 01, 2024"
+                android:textColor="#A0A0A0"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/itemAmountTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="R5,000.00"
+            android:textColor="#4CAF50"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginStart="16dp"/>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
