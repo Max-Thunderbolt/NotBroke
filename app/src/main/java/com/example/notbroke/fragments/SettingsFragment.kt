@@ -20,18 +20,19 @@ import com.example.notbroke.adapters.CategoryGoalsAdapter
 import com.example.notbroke.models.Category
 import com.example.notbroke.models.CategoryGoalDisplayItem
 import com.example.notbroke.repositories.RepositoryFactory
-import com.example.notbroke.repositories.TransactionRepository // Make sure this is imported
+import com.example.notbroke.repositories.TransactionRepository
 import com.example.notbroke.services.AuthService
 import com.example.notbroke.utils.CategorizationUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.first // Import first
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class SettingsFragment : Fragment() {
+// Implement the listener interface from your adapter
+class SettingsFragment : Fragment(), CategoryGoalsAdapter.OnDeleteButtonClickListener {
 
     private lateinit var addCategoryButton: Button
     private lateinit var setMonthLimitButton: Button
@@ -42,7 +43,7 @@ class SettingsFragment : Fragment() {
     private val authService = AuthService.getInstance()
     private val repositoryFactory by lazy { RepositoryFactory.getInstance(requireContext()) }
     private val categoryRepository by lazy { repositoryFactory.categoryRepository }
-    private val transactionRepository by lazy { repositoryFactory.transactionRepository } // Now used for spend calculation
+    private val transactionRepository by lazy { repositoryFactory.transactionRepository }
 
     // Helper data class for managing categories in the set limit dialog
     private data class DisplayableCategoryForLimit(
@@ -58,7 +59,6 @@ class SettingsFragment : Fragment() {
             }
         }
     }
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -90,6 +90,7 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // Refresh goals when the fragment is resumed
         loadCategoryGoalsAndProgress()
     }
 
@@ -98,6 +99,8 @@ class SettingsFragment : Fragment() {
         categoryGoalsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         categoryGoalsRecyclerView.adapter = categoryGoalsAdapter
         categoryGoalsRecyclerView.isNestedScrollingEnabled = false
+        // Set the delete button click listener on the adapter
+        categoryGoalsAdapter.setOnDeleteButtonClickListener(this)
     }
 
     private fun loadInitialDataAndGoals() {
@@ -108,6 +111,7 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
+                // Ensure categories are loaded and cached before attempting to load goals
                 CategorizationUtils.loadCategoriesFromDatabase(requireContext(), userId)
                 loadCategoryGoalsAndProgress()
             } catch (e: Exception) {
@@ -128,10 +132,12 @@ class SettingsFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
+                // Fetch all expense categories from the database
                 val dbExpenseCategories = categoryRepository
                     .getCategoriesByType(userId, Category.Type.EXPENSE)
                     .first()
 
+                // Filter for categories that have a monthly limit set
                 val categoriesWithLimits = dbExpenseCategories.filter { it.monthLimit != null && it.monthLimit > 0.0 }
 
                 if (categoriesWithLimits.isEmpty()) {
@@ -168,10 +174,12 @@ class SettingsFragment : Fragment() {
                                 categoryName = category.categoryName,
                                 currentSpend = currentSpend,
                                 monthlyLimit = monthlyLimit,
-                                progress = progress
+                                progress = progress,
+                                firestoreId = category.firestoreId // Include the firestoreId
                             )
                         )
                     }
+                    // Submit the list to the adapter and sort by category name
                     categoryGoalsAdapter.submitList(displayItems.sortedBy { it.categoryName })
                 }
             } catch (e: Exception) {
@@ -249,6 +257,7 @@ class SettingsFragment : Fragment() {
                     )
 
                     categoryRepository.saveCategory(newCategory)
+                    // Reload categories into cache and refresh goals after adding
                     CategorizationUtils.loadCategoriesFromDatabase(requireContext(), userId)
                     loadCategoryGoalsAndProgress()
 
@@ -330,6 +339,8 @@ class SettingsFragment : Fragment() {
 
                 if (displayableCategories.isNotEmpty()) {
                     categorySpinner.setText(displayableCategories[0].toString(), false)
+                    categorySpinner.isEnabled = true // Enable if there are categories
+                    setLimitButton.isEnabled = true // Enable if there are categories
                 } else {
                     categorySpinner.setText("No expense categories available", false)
                     categorySpinner.isEnabled = false
@@ -348,7 +359,10 @@ class SettingsFragment : Fragment() {
             val selectedCategoryString = categorySpinner.text.toString()
             val limitAmount = limitAmountEditText.text.toString().toDoubleOrNull()
 
-            if (selectedCategoryString.isEmpty() || selectedCategoryString == "No expense categories available") {
+            // Find the selected DisplayableCategoryForLimit object by comparing their toString() representation
+            val selectedDisplayableCategory = displayableCategories.find { it.toString() == selectedCategoryString }
+
+            if (selectedDisplayableCategory == null) {
                 categorySpinner.error = "Please select a valid category"
                 return@setOnClickListener
             }
@@ -360,15 +374,8 @@ class SettingsFragment : Fragment() {
             }
             limitAmountEditText.error = null
 
-            // Find the selected DisplayableCategoryForLimit object
-            val selectedDisplayableCategory = displayableCategories.find { it.toString() == selectedCategoryString }
-
-            if (selectedDisplayableCategory == null) {
-                Toast.makeText(context, "Could not find selected category details.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
             val selectedCategoryName = selectedDisplayableCategory.categoryName
+            val firestoreId = selectedDisplayableCategory.firestoreId // Get firestoreId if available
 
             lifecycleScope.launch {
                 try {
@@ -379,10 +386,15 @@ class SettingsFragment : Fragment() {
                         return@launch
                     }
 
-                    // Check if category exists in DB (even if it was originally hardcoded, it might have been saved)
-                    val existingCategoryFromDb = categoryRepository.getCategoriesByType(userId, Category.Type.EXPENSE)
-                        .first()
-                        .find { it.categoryName == selectedCategoryName }
+                    // Attempt to find the category in the database using firestoreId if available, or by name
+                    val existingCategoryFromDb = if (firestoreId != null) {
+                        categoryRepository.getCategoryById(userId, firestoreId).first()
+                    } else {
+                        categoryRepository.getCategoriesByType(userId, Category.Type.EXPENSE)
+                            .first()
+                            .find { it.categoryName == selectedCategoryName }
+                    }
+
 
                     if (existingCategoryFromDb != null) {
                         // Category exists, update it
@@ -402,13 +414,12 @@ class SettingsFragment : Fragment() {
                             keyword = null // Keywords are for auto-categorization, not directly stored with limits this way
                         )
                         categoryRepository.saveCategory(newCategory)
-                        // Also update CategorizationUtils cache if it's a truly new name not in hardcoded rules
-                        // However, loadCategoriesFromDatabase will be called by loadCategoryGoalsAndProgress anyway
+                        // Reload categories into cache after saving a potentially new one
+                        CategorizationUtils.loadCategoriesFromDatabase(requireContext(), userId)
                         Toast.makeText(context, "Limit for '$selectedCategoryName' set", Toast.LENGTH_SHORT).show()
                     }
 
-                    // Refresh the list and CategorizationUtils
-                    CategorizationUtils.loadCategoriesFromDatabase(requireContext(), userId)
+                    // Refresh the list of category goals displayed
                     loadCategoryGoalsAndProgress()
                     dialog.dismiss()
 
@@ -419,6 +430,67 @@ class SettingsFragment : Fragment() {
         }
         dialog.show()
     }
+
+    // 2. Implement the onDeleteClick method from the adapter's interface
+    override fun onDeleteClick(categoryGoalItem: CategoryGoalDisplayItem) {
+        // 3. Show a confirmation dialog before deleting
+        showDeleteConfirmationDialog(categoryGoalItem)
+    }
+
+    // 3. Add the delete confirmation dialog function
+    private fun showDeleteConfirmationDialog(categoryGoalItem: CategoryGoalDisplayItem) {
+        MaterialAlertDialogBuilder(requireContext(), R.style.AlertDialogTheme)
+            .setTitle("Delete Category Limit")
+            .setMessage("Are you sure you want to delete the monthly limit for '${categoryGoalItem.categoryName}'?")
+            .setPositiveButton("Delete") { dialog, which ->
+                // 4. Call the function to delete the limit
+                deleteCategoryLimit(categoryGoalItem)
+            }
+            .setNegativeButton("Cancel") { dialog, which ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    // 4. Add the function to delete the category limit
+    private fun deleteCategoryLimit(categoryGoalItem: CategoryGoalDisplayItem) {
+        val userId = getCurrentUserId()
+        if (userId.isEmpty()) {
+            Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Use the firestoreId from the display item to find the category
+        val categoryFirestoreId = categoryGoalItem.firestoreId
+
+        if (categoryFirestoreId == null) {
+            Toast.makeText(context, "Cannot delete limit for this category (no ID found).", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+
+        lifecycleScope.launch {
+            try {
+                // Fetch the full Category object using its firestoreId
+                val categoryToDeleteLimit = categoryRepository.getCategoryById(userId, categoryFirestoreId).first()
+
+                if (categoryToDeleteLimit != null) {
+                    // Update the category by setting the monthLimit to null
+                    val updatedCategory = categoryToDeleteLimit.copy(monthLimit = null)
+                    categoryRepository.updateCategory(updatedCategory) // Save the updated category
+
+                    Toast.makeText(context, "Limit for '${categoryGoalItem.categoryName}' deleted", Toast.LENGTH_SHORT).show()
+                    // Refresh the list of goals to reflect the change
+                    loadCategoryGoalsAndProgress()
+                } else {
+                    Toast.makeText(context, "Category not found in database.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to delete limit: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
 
     private fun getCurrentUserId(): String {
         return authService.getCurrentUserId() ?: ""

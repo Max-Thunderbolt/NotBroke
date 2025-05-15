@@ -217,7 +217,7 @@
                                     <TextView
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="Remaining"
+                                        android:text="Remaining Budget"
                                         android:textColor="#3CE91E"
                                         android:textSize="12sp" />
 

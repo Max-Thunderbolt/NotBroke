@@ -1,6 +1,7 @@
 package com.example.notbroke.fragments
 
 import android.os.Bundle
+import com.example.notbroke.models.Category
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -63,6 +64,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
+
 /**
  * DashboardFragment displays the user's financial overview including transactions,
  * balance, and expense breakdown by category.
@@ -70,7 +72,7 @@ import kotlinx.coroutines.flow.first
 class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     companion object {
         private const val TAG = "DashboardFragment"
-        
+
         fun newInstance(): DashboardFragment {
             Log.d(TAG, "Creating new instance requested.")
             return DashboardFragment()
@@ -79,7 +81,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
     // ===== UI Components =====
     private lateinit var transactionsRecyclerView: RecyclerView
-    private lateinit var transactionAdapter: TransactionAdapter 
+    private lateinit var transactionAdapter: TransactionAdapter
     private lateinit var pieChart: PieChart
     private lateinit var periodSpinner: Spinner
     private lateinit var totalBudgetTextView: TextView
@@ -281,7 +283,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                         currentStartDate = startDate
                         currentEndDate = endDate
                         Log.d(TAG, "setupPeriodSpinner: Fetching transactions for period: $selectedPeriod")
-                        observeTransactions() 
+                        observeTransactions()
                     } else {
                         currentStartDate = 0L
                         currentEndDate = 0L
@@ -298,7 +300,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     // ===== Activity Result Launchers =====
     private fun initializeActivityResultLaunchers() {
         Log.d(TAG, "initializeActivityResultLaunchers: Setting up.")
-        
+
         // Camera result launcher
         takePictureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -309,7 +311,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                 currentPhotoPath = null
             }
         }
-        
+
         // Gallery result launcher
         pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -318,7 +320,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                 Log.w(TAG, "Gallery Result NOT OK, Code: ${result.resultCode}")
             }
         }
-        
+
         // Permission request launcher
         requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
@@ -330,7 +332,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             }
         }
     }
-    
+
     private fun handleCameraResult() {
         currentPhotoPath?.let { path ->
             val file = File(path)
@@ -360,7 +362,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             showToast("Failed to get picture path")
         }
     }
-    
+
     private fun handleGalleryResult(uri: Uri?) {
         uri?.let {
             Log.d(TAG, "Gallery Result OK, URI: $uri")
@@ -704,6 +706,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     override fun onItemClick(transaction: Transaction) {
         Log.d(TAG, "Transaction item clicked: ${transaction.description}")
         lifecycleScope.launch {
+            // Ensure categories are loaded for the edit dialog category selection
             CategorizationUtils.loadCategoriesFromDatabase(requireContext(),authService.getCurrentUserId())
             showEditTransactionDialog(transaction)
         }
@@ -713,10 +716,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private fun addTransaction(transaction: Transaction) {
         lifecycleScope.launch {
             try {
-                transactionRepository.saveTransaction(transaction, authService.getCurrentUserId())
-                Toast.makeText(context, "Transaction added successfully", Toast.LENGTH_SHORT).show()
+                val userId = authService.getCurrentUserId()
+                if (userId.isEmpty()) {
+                    activity?.runOnUiThread { Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show() }
+                    return@launch
+                }
+                transactionRepository.saveTransaction(transaction, userId)
+                activity?.runOnUiThread { Toast.makeText(context, "Transaction added successfully", Toast.LENGTH_SHORT).show() }
             } catch (e: Exception) {
-                Toast.makeText(context, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                activity?.runOnUiThread { Toast.makeText(context, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show() }
                 Log.e(TAG, "Error adding transaction", e)
             }
         }
@@ -725,10 +733,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private fun updateTransaction(transaction: Transaction) {
         lifecycleScope.launch {
             try {
-                transactionRepository.updateTransaction(transaction, authService.getCurrentUserId())
-                Toast.makeText(context, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
+                val userId = authService.getCurrentUserId()
+                if (userId.isEmpty()) {
+                    activity?.runOnUiThread { Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show() }
+                    return@launch
+                }
+                transactionRepository.updateTransaction(transaction, userId)
+                activity?.runOnUiThread { Toast.makeText(context, "Transaction updated successfully", Toast.LENGTH_SHORT).show() }
             } catch (e: Exception) {
-                Toast.makeText(context, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                activity?.runOnUiThread { Toast.makeText(context, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show() }
                 Log.e(TAG, "Error updating transaction", e)
             }
         }
@@ -737,10 +750,15 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private fun deleteTransaction(transaction: Transaction) {
         lifecycleScope.launch {
             try {
-                transactionRepository.deleteTransaction(transaction, authService.getCurrentUserId())
-                Toast.makeText(context, "Transaction deleted successfully", Toast.LENGTH_SHORT).show()
+                val userId = authService.getCurrentUserId()
+                if (userId.isEmpty()) {
+                    activity?.runOnUiThread { Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show() }
+                    return@launch
+                }
+                transactionRepository.deleteTransaction(transaction, userId)
+                activity?.runOnUiThread { Toast.makeText(context, "Transaction deleted successfully", Toast.LENGTH_SHORT).show() }
             } catch (e: Exception) {
-                Toast.makeText(context, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                activity?.runOnUiThread { Toast.makeText(context, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show() }
                 Log.e(TAG, "Error deleting transaction", e)
             }
         }
@@ -756,10 +774,11 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                 balance -= transaction.amount
             }
         }
-        context?.let {
+        activity?.runOnUiThread { // Ensure UI updates are on the main thread
+            if (!isAdded) return@runOnUiThread // Check if fragment is still attached
             balanceTextView.text = String.format(Locale.getDefault(), "R %.2f", balance)
             Log.d(TAG, "updateBalance: Balance updated to R ${"%.2f".format(balance)}")
-        } ?: Log.w(TAG, "updateBalance: Context is null, cannot format currency.")
+        } ?: Log.w(TAG, "updateBalance: Activity is null, cannot format currency.")
     }
 
     private fun updatePieChart(transactions: List<Transaction>) {
@@ -778,11 +797,14 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         // Check for empty or all-zero data
         val positiveEntries = categoryTotals.filter { it.value > 0 }
         if (positiveEntries.isEmpty()) {
-            pieChart.data = null
-            pieChart.centerText = "Total\nR 0.00"
-            pieChart.setUsePercentValues(false)
-            pieChart.invalidate()
-            Log.d(TAG, "updatePieChart: No positive expense data, chart cleared.")
+            activity?.runOnUiThread { // Ensure UI updates are on the main thread
+                if (!isAdded) return@runOnUiThread // Check if fragment is still attached
+                pieChart.data = null
+                pieChart.centerText = "Total\nR 0.00"
+                pieChart.setUsePercentValues(false)
+                pieChart.invalidate()
+                Log.d(TAG, "updatePieChart: No positive expense data, chart cleared.")
+            }
             return
         }
 
@@ -813,12 +835,17 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         val totalSpent = positiveEntries.values.sum()
         pieChart.centerText = String.format(Locale.getDefault(), "Total\nR %.2f", totalSpent)
 
-        // Refresh chart
-        pieChart.animateY(1000)
-        pieChart.invalidate()
-        Log.d(TAG, "updatePieChart: Chart updated and refreshed.")
+        // Refresh chart on the main thread
+        activity?.runOnUiThread {
+            if (!isAdded) return@runOnUiThread // Check if fragment is still attached
+            pieChart.animateY(1000)
+            pieChart.invalidate()
+            Log.d(TAG, "updatePieChart: Chart updated and refreshed.")
+        }
     }
 
+
+    // Updated updateTransactionSummary to call the corrected updateBudgetInformation
     private fun updateTransactionSummary(transactions: List<Transaction>) {
         updateBalance(transactions)
 
@@ -826,12 +853,13 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         val totalSpent = transactions
             .filter { it.type == Transaction.Type.EXPENSE }
             .sumOf { it.amount }
-        totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
+        activity?.runOnUiThread { // Ensure UI updates are on the main thread
+            if (!isAdded) return@runOnUiThread // Check if fragment is still attached
+            totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpent)
+        }
 
-        // Get the current period from the spinner
-        val currentPeriod = periodSpinner.selectedItem as? String ?: "This Month"
-        
-        // Update budget information
+
+        // Update budget information specifically for limited categories
         updateBudgetInformation(transactions)
     }
 
@@ -840,8 +868,8 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
         activity?.runOnUiThread {
             if (!isAdded) return@runOnUiThread
             transactionAdapter.submitList(emptyList())
-            updatePieChart(emptyList())
-            updateBalance(emptyList())
+            updatePieChart(emptyList()) // Pass empty list to clear chart
+            updateBalance(emptyList()) // Pass empty list to reset balance
             totalSpentTextView.text = "R 0.00"
             totalBudgetTextView.text = "R ----.--"
             remainingTextView.text = "R ----.--"
@@ -959,11 +987,11 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
     private fun navigateToCategoryDetails(categoryName: String) {
         if (currentStartDate == 0L || currentEndDate == 0L) {
             Log.w(TAG, "navigateToCategoryDetails: Date range not set, cannot navigate.")
-            showToast("Error: Date range not available")
+            activity?.runOnUiThread { showToast("Error: Date range not available") }
             return
         }
         Log.i(TAG,"Attempting navigation to details for category: '$categoryName' (Period: ${Date(currentStartDate)} - ${Date(currentEndDate)})")
-        showToast("Navigate for: $categoryName")
+        activity?.runOnUiThread { showToast("Navigate for: $categoryName") }
     }
 
     private fun showToast(message: String) {
@@ -978,9 +1006,17 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
             authService.getCurrentUserId()
         } catch (e: IllegalStateException) {
             Log.e(TAG, "User not authenticated", e)
-            showToast("Please sign in to view transactions")
+            activity?.runOnUiThread { showToast("Please sign in to view transactions") }
+            clearUiData() // Clear UI if user is not logged in
             return
         }
+        if (userId.isEmpty()) {
+            Log.w(TAG, "observeTransactions: User ID is empty.")
+            activity?.runOnUiThread { showToast("User not logged in.") }
+            clearUiData() // Clear UI if user ID is empty
+            return
+        }
+
 
         Log.d(TAG, "Starting transaction observation for user: $userId")
         lifecycleScope.launch {
@@ -997,28 +1033,33 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
 
                 // Only observe transactions if we have a valid date range
                 if (currentStartDate > 0 && currentEndDate > 0) {
+                    // Fetch transactions from the repository based on the current date range and user ID
                     transactionRepository.getTransactionsByDateRange(currentStartDate, currentEndDate, userId)
                         .collectLatest { transactions: List<Transaction> ->
                             Log.d(TAG, "Observed ${transactions.size} transactions for period ${Date(currentStartDate)} to ${Date(currentEndDate)}")
-                            
-                            // Update adapter with transactions
-                            transactionAdapter.submitList(transactions)
 
-                            // Update UI with transaction data
-                            updateTransactionSummary(transactions)
-                            updatePieChart(transactions)
-                            updateBudgetInformation(transactions)
-                            Log.d(TAG, "UI updated with ${transactions.size} transactions")
+                            // Update UI with the observed transactions
+                            activity?.runOnUiThread {
+                                if (!isAdded) return@runOnUiThread // Check if fragment is still attached
+                                // Update adapter with all transactions in the date range
+                                transactionAdapter.submitList(transactions)
+
+                                // Update other UI elements based on the filtered transactions
+                                updateTransactionSummary(transactions)
+                                updatePieChart(transactions) // This should work with all transactions in the date range
+                            }
+                            Log.d(TAG, "UI update triggered with ${transactions.size} transactions")
                         }
                 } else {
-                    Log.w(TAG, "Invalid date range, clearing UI data")
+                    Log.w(TAG, "Invalid date range (${Date(currentStartDate)} to ${Date(currentEndDate)}), clearing UI data")
                     clearUiData()
                 }
             } catch (e: CancellationException) {
                 Log.i(TAG, "Transaction observation coroutine cancelled (likely due to lifecycle)")
             } catch (e: Exception) {
                 Log.e(TAG, "Error collecting transactions flow", e)
-                showToast("Error loading transactions: ${e.message}")
+                activity?.runOnUiThread { showToast("Error loading transactions: ${e.message}") }
+                clearUiData() // Clear UI on error
             }
         }
     }
@@ -1030,36 +1071,47 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                     authService.getCurrentUserId()
                 } catch (e: IllegalStateException) {
                     Log.e(TAG, "User not authenticated", e)
-                    showToast("Please sign in to view transactions")
+                    activity?.runOnUiThread { showToast("Please sign in to view transactions") }
+                    return@launch
+                }
+                if (userId.isEmpty()) {
+                    Log.w(TAG, "updateBudgetInformation: User ID is empty.")
                     return@launch
                 }
 
-                // Get all categories with their monthly limits using repository factory
+                // Get all categories with their monthly limits
                 val categories = categoryRepository.getAllCategories(userId).first()
-                val totalMonthlyBudget = categories.sumOf { it.monthLimit ?: 0.0 }
-                
-                // Calculate total spent in the current month
-                val calendar = Calendar.getInstance()
-                val currentMonth = calendar.get(Calendar.MONTH)
-                val currentYear = calendar.get(Calendar.YEAR)
-                
-                val totalSpent = transactions
-                    .filter { 
-                        val transactionDate = Calendar.getInstance().apply { timeInMillis = it.date }
-                        transactionDate.get(Calendar.MONTH) == currentMonth && 
-                        transactionDate.get(Calendar.YEAR) == currentYear &&
-                        it.type == Transaction.Type.EXPENSE
+
+                // Filter for expense categories that have a monthly limit set
+                // Use 'it.categoryType' as this is the correct property name in your Category data class
+                val categoriesWithLimits = categories.filter { it.categoryType == Category.Type.EXPENSE && it.monthLimit != null && it.monthLimit > 0.0 }
+
+                // Calculate the total monthly budget by summing up the limits of these categories
+                val totalMonthlyBudget = categoriesWithLimits.sumOf { it.monthLimit ?: 0.0 }
+
+                // Get the names of categories that have limits
+                val categoryNamesWithLimits = categoriesWithLimits.map { it.categoryName }
+
+                // Calculate total spent *only* in categories that have a monthly limit
+                val totalSpentInLimitedCategories = transactions
+                    .filter {
+                        // Use 'it.type' here because the Transaction data class has a 'type' property
+                        it.type == Transaction.Type.EXPENSE &&
+                                categoryNamesWithLimits.contains(it.category)
                     }
                     .sumOf { it.amount }
-                
-                val remainingBudget = totalMonthlyBudget - totalSpent
-                
-                // Update UI
+
+                val remainingBudget = totalMonthlyBudget - totalSpentInLimitedCategories
+
+                // Update UI on the main thread
                 activity?.runOnUiThread {
-                    totalBudgetTextView.text = "${String.format("%.2f", totalMonthlyBudget)}"
-                    totalSpentTextView.text = "${String.format("%.2f", totalSpent)}"
-                    remainingTextView.text = "${String.format("%.2f", remainingBudget)}"
-                    
+                    if (!isAdded) return@runOnUiThread // Ensure fragment is still attached
+
+                    // Update the TextViews
+                    totalBudgetTextView.text = String.format(Locale.getDefault(), "R %.2f", totalMonthlyBudget)
+                    totalSpentTextView.text = String.format(Locale.getDefault(), "R %.2f", totalSpentInLimitedCategories) // Show spent in limited categories
+                    remainingTextView.text = String.format(Locale.getDefault(), "R %.2f", remainingBudget)
+
                     // Update text colors based on remaining budget
                     val color = if (remainingBudget < 0) {
                         ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
@@ -1070,7 +1122,7 @@ class DashboardFragment : Fragment(), TransactionAdapter.OnItemClickListener {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating budget information", e)
-                showToast("Error calculating budget information")
+                activity?.runOnUiThread { showToast("Error calculating budget information") }
             }
         }
     }
