@@ -54,5 +54,16 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginStart="16dp"/>
+
+        <Button
+            android:id="@+id/itemDeleteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DELETE"
+            android:textColor="@color/negative_red" android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:layout_marginStart="16dp"
+            android:gravity="center_vertical"/>
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

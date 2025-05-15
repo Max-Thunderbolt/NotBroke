@@ -11,7 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.notbroke.R
-import com.example.notbroke.adapters.NetWorthAdapter // Make sure this adapter is set up for item_net_worth.xml
+import com.example.notbroke.adapters.NetWorthAdapter
 import com.example.notbroke.models.NetWorthEntry
 import com.example.notbroke.repositories.RepositoryFactory
 import com.example.notbroke.services.AuthService
@@ -26,14 +26,14 @@ import java.util.*
 class NetWorthFragment : Fragment() {
 
     private lateinit var totalNetWorthText: TextView
-    private lateinit var assetNameEditText: TextInputEditText // Changed to TextInputEditText
-    private lateinit var addAmountEditText: TextInputEditText // Changed to TextInputEditText
+    private lateinit var assetNameEditText: TextInputEditText
+    private lateinit var addAmountEditText: TextInputEditText
     private lateinit var addDateButton: Button
     private lateinit var addButton: Button
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NetWorthAdapter
     private lateinit var toggleFormButton: Button
-    private lateinit var entryFormCardView: MaterialCardView // Changed from LinearLayout
+    private lateinit var entryFormCardView: MaterialCardView
 
     private var selectedDate: Date? = null
     private var editingEntry: NetWorthEntry? = null
@@ -60,16 +60,17 @@ class NetWorthFragment : Fragment() {
         addButton = view.findViewById(R.id.addButton)
         recyclerView = view.findViewById(R.id.netWorthRecyclerView)
         toggleFormButton = view.findViewById(R.id.toggleFormButton)
-        entryFormCardView = view.findViewById(R.id.entryFormCardView) // Changed
+        entryFormCardView = view.findViewById(R.id.entryFormCardView)
 
         adapter = NetWorthAdapter(
             onClick = { entry -> startEditingEntry(entry) },
-            onLongClick = { entry -> confirmDeleteEntry(entry) }
+            onLongClick = { entry -> confirmDeleteEntry(entry) },
+            onDeleteClick = { entry -> confirmDeleteEntry(entry) } // Reuse existing confirmDeleteEntry
         )
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
-        recyclerView.isNestedScrollingEnabled = false // Good for ScrollView performance
+        recyclerView.isNestedScrollingEnabled = false
 
         toggleFormButton.setOnClickListener {
             if (entryFormCardView.visibility == View.GONE) {
@@ -78,7 +79,7 @@ class NetWorthFragment : Fragment() {
             } else {
                 entryFormCardView.visibility = View.GONE
                 toggleFormButton.text = "ADD NET WORTH ENTRY"
-                resetForm() // Optionally reset form when hiding
+                resetForm()
             }
         }
 
@@ -95,10 +96,9 @@ class NetWorthFragment : Fragment() {
             .build()
 
         datePicker.addOnPositiveButtonClickListener { selection ->
-            // Adjust for timezone offset if MaterialDatePicker.todayInUtcMilliseconds() is used
             val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
             calendar.timeInMillis = selection
-            selectedDate = calendar.time // Store as Date object
+            selectedDate = calendar.time
             val formatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(selectedDate!!)
             addDateButton.text = formatted
         }
@@ -109,7 +109,6 @@ class NetWorthFragment : Fragment() {
     private fun handleAddOrUpdate() {
         val nameText = assetNameEditText.text.toString().trim()
         val amountText = addAmountEditText.text.toString()
-        // Allow negative numbers for liabilities
         val amount = amountText.toDoubleOrNull()
         val date = selectedDate
         val userId = authService.getCurrentUserId() ?: return
@@ -128,13 +127,11 @@ class NetWorthFragment : Fragment() {
             Toast.makeText(context, "Please select a date.", Toast.LENGTH_SHORT).show()
             return
         }
-        assetNameEditText.error = null // Clear error
-        addAmountEditText.error = null // Clear error
-
+        assetNameEditText.error = null
+        addAmountEditText.error = null
 
         val entry = editingEntry?.copy(name = nameText, amount = amount, date = date)
             ?: NetWorthEntry(id = UUID.randomUUID().toString(), userId = userId, name = nameText, amount = amount, date = date)
-
 
         lifecycleScope.launch {
             val result = if (editingEntry != null) {
@@ -146,11 +143,6 @@ class NetWorthFragment : Fragment() {
             result.onSuccess {
                 Toast.makeText(context, if (editingEntry != null) "Entry updated" else "Entry added", Toast.LENGTH_SHORT).show()
                 resetForm()
-                if (entryFormCardView.visibility == View.VISIBLE && editingEntry == null) {
-                    // If adding a new entry and form is visible, you might want to keep it open or hide it
-                    // entryFormCardView.visibility = View.GONE
-                    // toggleFormButton.text = "ADD NET WORTH ENTRY"
-                }
             }.onFailure {
                 Toast.makeText(context, "Failed: ${it.message}", Toast.LENGTH_SHORT).show()
             }
@@ -162,9 +154,9 @@ class NetWorthFragment : Fragment() {
 
         lifecycleScope.launch {
             netWorthRepository.getAllEntries(userId).collectLatest { entries ->
-                adapter.submitList(entries.sortedByDescending { it.date }) // Show newest first
+                adapter.submitList(entries.sortedByDescending { it.date })
                 val total = entries.sumOf { it.amount }
-                totalNetWorthText.text = "R%.2f".format(total) // Displaying only the value as per new XML
+                totalNetWorthText.text = String.format(Locale("en", "ZA"), "R%.2f", total)
             }
         }
     }
@@ -177,16 +169,15 @@ class NetWorthFragment : Fragment() {
         addDateButton.text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(entry.date)
         addButton.text = "Update Entry"
 
-        // Show the form if it's hidden
         if (entryFormCardView.visibility == View.GONE) {
             entryFormCardView.visibility = View.VISIBLE
             toggleFormButton.text = "HIDE FORM"
         }
-        assetNameEditText.requestFocus() // Focus on the first field
+        assetNameEditText.requestFocus()
     }
 
-    private fun confirmDeleteEntry(entry: NetWorthEntry) {
-        AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme) // Apply a theme if you have one
+    private fun confirmDeleteEntry(entry: NetWorthEntry) { // This method is reused
+        AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             .setTitle("Delete Entry")
             .setMessage("Are you sure you want to delete '${entry.name}'?")
             .setPositiveButton("Delete") { _, _ -> deleteEntry(entry) }
@@ -194,11 +185,11 @@ class NetWorthFragment : Fragment() {
             .show()
     }
 
-    private fun deleteEntry(entry: NetWorthEntry) {
+    private fun deleteEntry(entry: NetWorthEntry) { // This method is reused
         lifecycleScope.launch {
             netWorthRepository.deleteEntry(entry.id).onSuccess {
                 Toast.makeText(context, "Entry deleted", Toast.LENGTH_SHORT).show()
-                resetForm() // Reset form in case it was populated with this entry's data
+                resetForm()
             }.onFailure {
                 Toast.makeText(context, "Failed to delete: ${it.message}", Toast.LENGTH_SHORT).show()
             }
@@ -214,9 +205,6 @@ class NetWorthFragment : Fragment() {
         addAmountEditText.error = null
         addDateButton.text = "SELECT DATE"
         addButton.text = "SAVE ENTRY"
-        // Consider if you want to hide the form on reset:
-        // entryFormCardView.visibility = View.GONE
-        // toggleFormButton.text = "ADD NET WORTH ENTRY"
     }
 
     companion object {
