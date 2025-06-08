@@ -1,100 +1,171 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="#000000"
+    android:fillViewport="true"
+    android:background="#121017"
     tools:context=".fragments.NetWorthFragment">
 
-    <!-- Total Net Worth -->
-    <TextView
-        android:id="@+id/totalNetWorthText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Total Net Worth: R0.00"
-        android:textColor="#FF007F"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <!-- Toggle Entry Form Button -->
-    <Button
-        android:id="@+id/toggleFormButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="ADD ENTRY"
-        android:layout_marginTop="16dp"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/pink_border_button" />
-
-    <!-- Entry Form Container (Initially GONE) -->
     <LinearLayout
-        android:id="@+id/entryFormLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="16dp"
-        android:visibility="gone"
-        android:background="#1A1A1A"
-        android:padding="16dp"
-        android:elevation="4dp">
+        android:padding="16dp">
 
-        <!-- Name -->
-        <EditText
-            android:id="@+id/assetNameEditText"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Asset Name"
-            android:backgroundTint="#FF007F"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#FF007F"
-            android:layout_marginBottom="12dp"/>
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeColor="#E91E63"
+            app:strokeWidth="1dp"
+            android:layout_marginBottom="16dp">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <!-- Amount -->
-        <EditText
-            android:id="@+id/addAmountEditText"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Total Net Worth"
+                    android:textColor="#EAEAEA"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/totalNetWorthText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="R12,345.67"
+                    android:textColor="#E91E63"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toggleFormButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter Amount"
-            android:inputType="numberDecimal"
-            android:backgroundTint="#FF007F"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#FF007F"
-            android:layout_marginBottom="12dp"/>
+            android:text="ADD NET WORTH ENTRY"
+            android:textColor="#EAEAEA"
+            app:strokeColor="#E91E63"
+            app:icon="@android:drawable/ic_menu_add"
+            app:iconTint="#E91E63"
+            app:strokeWidth="2dp"
+            android:layout_marginBottom="16dp"/>
 
-
-        <!-- Date -->
-        <Button
-            android:id="@+id/addDateButton"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/entryFormCardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SELECT DATE"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/pink_border_button"
-            android:layout_marginBottom="12dp" />
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            android:layout_marginBottom="16dp">
 
-        <!-- Submit Button -->
-        <Button
-            android:id="@+id/addButton"
+            <LinearLayout
+                android:id="@+id/entryFormLayout_unused"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Add New Asset / Liability"
+                    android:textColor="#EAEAEA"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:textColorHint="#B0B0B0"
+                    app:boxStrokeColor="#E91E63"
+                    app:hintTextColor="#E91E63">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/assetNameEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Asset/Liability Name (e.g., Savings)"
+                        android:textColor="#EAEAEA"
+                        android:inputType="textCapWords"
+                        android:imeOptions="actionNext"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:textColorHint="#B0B0B0"
+                    app:boxStrokeColor="#E91E63"
+                    app:hintTextColor="#E91E63">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/addAmountEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Amount (Use '-' for liabilities)"
+                        android:inputType="numberSigned|numberDecimal"
+                        android:textColor="#EAEAEA"
+                        android:imeOptions="actionDone"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addDateButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SELECT DATE"
+                    android:textColor="#E91E63"
+                    app:icon="@android:drawable/ic_menu_my_calendar"
+                    app:iconTint="#E91E63"
+                    android:layout_marginBottom="16dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SAVE ENTRY"
+                    android:textColor="#FFFFFF"
+                    app:backgroundTint="#E91E63" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Past Entries"
+            android:textColor="#EAEAEA"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:textStyle="bold"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/netWorthRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SAVE ENTRY"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/pink_border_button" />
+            android:minHeight="200dp"
+            android:clipToPadding="false"
+            android:paddingBottom="8dp"
+            tools:listitem="@layout/item_net_worth" />
     </LinearLayout>
-
-    <!-- RecyclerView -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/netWorthRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="16dp"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp"
-        tools:listitem="@layout/item_net_worth" />
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>
