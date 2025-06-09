@@ -7,7 +7,7 @@ NotBroke is a personal finance management Android application designed to help u
 - Part 2: https://github.com/VCSTDN2024/prog7313-part2-dreamteam
 
 ## Demo Video
-- https://youtu.be/Rl4SlB1U8-I
+- https://www.youtube.com/watch?v=B7Rhk_RqPws
 
 ## Features
 
